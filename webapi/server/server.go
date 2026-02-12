@@ -14,6 +14,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/hashicorp/go-memdb"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 func initWordDb() *memdb.MemDB {
@@ -82,7 +83,8 @@ func NewApp() *App {
 func (a *App) Run(port string) error {
 	wordHandler := http2.NewHandler(a.wordService)
 	wordRouter := mux.NewRouter()
-	wordRouter.HandleFunc("/api/word/", wordHandler.GetAll).Methods("GET")
+	wordRouter.HandleFunc("/api/words/", wordHandler.GetAll).Methods("GET")
+	wordRouter.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
 	a.server = &http.Server{
 		Addr:           ":" + port,
 		Handler:        wordRouter,

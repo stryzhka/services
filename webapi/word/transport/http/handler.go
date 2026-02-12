@@ -41,6 +41,7 @@ func NewHandler(s word.Service) *Handler {
 
 func (h *Handler) Healthcheck(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
 }
 
 // GetAll godoc
