@@ -12,8 +12,8 @@ type WordService struct {
 	r word.Repository
 }
 
-func NewWordService(r word.Repository) WordService {
-	return WordService{r: r}
+func NewWordService(r word.Repository) *WordService {
+	return &WordService{r: r}
 }
 
 func validateWord(w models.Word) error {

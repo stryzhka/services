@@ -13,6 +13,10 @@ type InmemRepository struct {
 	db *memdb.MemDB
 }
 
+func NewInmemRepository(db *memdb.MemDB) *InmemRepository {
+	return &InmemRepository{db: db}
+}
+
 func (m *InmemRepository) GetAll(ctx context.Context) []*models.Word {
 	var words []*models.Word
 	txn := m.db.Txn(false)
