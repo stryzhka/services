@@ -108,7 +108,7 @@ func insertUniqueTestValues(db *memdb.MemDB) {
 
 func TestGetAll(t *testing.T) {
 	db := initDb()
-	insertTestValues(db)
+	insertUniqueTestValues(db)
 	db.Txn(false)
 	r := InmemRepository{db: db}
 	words := r.GetAll(context.Background())

@@ -55,6 +55,7 @@ func (h *Handler) GetAll(w http.ResponseWriter, req *http.Request) {
 	var words []*models.Word
 	words = h.s.GetAll(req.Context())
 	jsonWords, err := json.Marshal(words)
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if len(words) == 0 || err != nil {
 		jsonWords = []byte("[]")

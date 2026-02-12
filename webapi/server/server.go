@@ -6,12 +6,15 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"services/webapi/models"
 	"services/webapi/word"
 	"services/webapi/word/repository"
 	"services/webapi/word/service"
 	http2 "services/webapi/word/transport/http"
+	"strconv"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/hashicorp/go-memdb"
 	httpSwagger "github.com/swaggo/http-swagger"
@@ -66,6 +69,27 @@ func initWordDb() *memdb.MemDB {
 	return db
 }
 
+func insertTestValues(db *memdb.MemDB) {
+	str := "test"
+	txn := db.Txn(true)
+	defer txn.Abort()
+	for i := 0; i < 1000; i++ {
+		testWord := &models.Word{
+			Id:            uuid.New().String(),
+			EngText:       str + strconv.Itoa(i),
+			NativeText:    str + strconv.Itoa(i),
+			Transcription: str + strconv.Itoa(i),
+			Difficulty:    str + strconv.Itoa(i),
+			CategoryId:    uuid.Nil.String(),
+		}
+		err := txn.Insert("word", testWord)
+		if err != nil {
+			panic(err)
+		}
+	}
+	txn.Commit()
+}
+
 type App struct {
 	wordService word.Service
 	server      *http.Server
@@ -73,6 +97,7 @@ type App struct {
 
 func NewApp() *App {
 	db := initWordDb()
+	insertTestValues(db)
 	wordRepository := repository.NewInmemRepository(db)
 	wordService := service.NewWordService(wordRepository)
 	return &App{
