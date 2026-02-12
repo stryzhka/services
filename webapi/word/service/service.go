@@ -38,12 +38,12 @@ func (w *WordService) Create(ctx context.Context, engText, nativeText, transcrip
 		categoryUuid = uuid.Nil
 	}
 	word := &models.Word{
-		Id:            uuid.New(),
+		Id:            uuid.New().String(),
 		EngText:       engText,
 		NativeText:    nativeText,
 		Transcription: transcription,
 		Difficulty:    difficulty,
-		CategoryId:    categoryUuid,
+		CategoryId:    categoryUuid.String(),
 	}
 	err = validateWord(*word)
 	if err != nil {
