@@ -6,11 +6,15 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"services/webapi/category"
+	categoryrepo "services/webapi/category/repository"
+	categorysvc "services/webapi/category/service"
 	"services/webapi/models"
-	"services/webapi/word"
-	"services/webapi/word/repository"
-	"services/webapi/word/service"
-	http2 "services/webapi/word/transport/http"
+	wordpkg "services/webapi/word"
+	wordrepo "services/webapi/word/repository"
+	wordsvc "services/webapi/word/service"
+	categoryhttp "services/webapi/category/transport/http"
+	wordhttp "services/webapi/word/transport/http"
 	"strconv"
 	"time"
 
@@ -59,6 +63,21 @@ func initWordDb() *memdb.MemDB {
 					},
 				},
 			},
+			"category": &memdb.TableSchema{
+				Name: "category",
+				Indexes: map[string]*memdb.IndexSchema{
+					"id": &memdb.IndexSchema{
+						Name:    "id",
+						Unique:  true,
+						Indexer: &memdb.StringFieldIndex{Field: "Id"},
+					},
+					"name": &memdb.IndexSchema{
+						Name:    "name",
+						Unique:  true,
+						Indexer: &memdb.StringFieldIndex{Field: "Name"},
+					},
+				},
+			},
 		},
 	}
 
@@ -91,32 +110,49 @@ func insertTestValues(db *memdb.MemDB, count int) {
 }
 
 type App struct {
-	wordService word.Service
-	server      *http.Server
+	wordService     wordpkg.Service
+	categoryService category.Service
+	server          *http.Server
 }
 
 func NewApp() *App {
 	db := initWordDb()
 	insertTestValues(db, 3)
-	wordRepository := repository.NewInmemRepository(db)
-	wordService := service.NewWordService(wordRepository)
+	wordRepository := wordrepo.NewInmemRepository(db)
+	wordService := wordsvc.NewWordService(wordRepository)
+
+	categoryRepository := categoryrepo.NewInmemRepository(db)
+	categoryService := categorysvc.NewCategoryService(categoryRepository)
 	return &App{
-		wordService: wordService,
+		wordService:     wordService,
+		categoryService: categoryService,
 	}
 }
 
 func (a *App) Run(port string) error {
-	wordHandler := http2.NewHandler(a.wordService)
-	wordRouter := mux.NewRouter()
-	wordRouter.HandleFunc("/api/words/", wordHandler.GetAll).Methods("GET")
-	wordRouter.HandleFunc("/api/words/{id}", wordHandler.GetById).Methods("GET")
-	wordRouter.HandleFunc("/api/words/", wordHandler.Create).Methods("POST")
-	wordRouter.HandleFunc("/api/words/{id}", wordHandler.Delete).Methods("DELETE")
-	wordRouter.HandleFunc("/api/words/{id}", wordHandler.Update).Methods("PUT")
-	wordRouter.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
+	wordHandler := wordhttp.NewHandler(a.wordService)
+	categoryHandler := categoryhttp.NewHandler(a.categoryService)
+	router := mux.NewRouter()
+
+	// word routes
+	router.HandleFunc("/api/words/", wordHandler.GetAll).Methods("GET")
+	router.HandleFunc("/api/words/{id}", wordHandler.GetById).Methods("GET")
+	router.HandleFunc("/api/words/", wordHandler.Create).Methods("POST")
+	router.HandleFunc("/api/words/{id}", wordHandler.Delete).Methods("DELETE")
+	router.HandleFunc("/api/words/{id}", wordHandler.Update).Methods("PUT")
+
+	// category routes
+	router.HandleFunc("/api/categories/", categoryHandler.GetAll).Methods("GET")
+	router.HandleFunc("/api/categories/{id}", categoryHandler.GetById).Methods("GET")
+	router.HandleFunc("/api/categories/", categoryHandler.Create).Methods("POST")
+	router.HandleFunc("/api/categories/{id}", categoryHandler.Delete).Methods("DELETE")
+	router.HandleFunc("/api/categories/{id}", categoryHandler.Update).Methods("PUT")
+	router.HandleFunc("/api/categories/{id}/words", categoryHandler.GetAllWords).Methods("GET")
+
+	router.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
 	a.server = &http.Server{
 		Addr:           ":" + port,
-		Handler:        wordRouter,
+		Handler:        router,
 		ReadTimeout:    20 * time.Second,
 		WriteTimeout:   20 * time.Second,
 		MaxHeaderBytes: 1 << 20,

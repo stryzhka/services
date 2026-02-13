@@ -1,0 +1,255 @@
+basePath: /
+definitions:
+  http.CategoryDto:
+    properties:
+      name:
+        type: string
+    type: object
+  http.WordDto:
+    properties:
+      category_id:
+        description: TODO тут по другому тоже но мне лень
+        type: string
+      difficulty:
+        type: string
+      eng_text:
+        type: string
+      native_text:
+        type: string
+      transcription:
+        type: string
+    type: object
+  models.Category:
+    properties:
+      id:
+        description: потом поправлю
+        type: string
+      name:
+        type: string
+    type: object
+  models.Word:
+    properties:
+      category_id:
+        type: string
+      difficulty:
+        type: string
+      eng_text:
+        type: string
+      id:
+        type: string
+      native_text:
+        type: string
+      transcription:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: 'objects service: CRUD words and categories'
+  title: objects-service
+  version: "1.0"
+paths:
+  /api/categories/:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Category'
+            type: array
+      summary: Get all categories
+      tags:
+      - category
+    post:
+      parameters:
+      - description: category
+        in: body
+        name: category
+        required: true
+        schema:
+          $ref: '#/definitions/http.CategoryDto'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+        "422":
+          description: Unprocessable Entity
+      summary: Create new category
+      tags:
+      - category
+  /api/categories/{id}:
+    delete:
+      parameters:
+      - description: category id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "422":
+          description: Unprocessable Entity
+      summary: Delete category by id
+      tags:
+      - category
+    get:
+      parameters:
+      - description: category id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Category'
+      summary: Get category by id
+      tags:
+      - category
+    put:
+      parameters:
+      - description: category id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: category
+        in: body
+        name: category
+        required: true
+        schema:
+          $ref: '#/definitions/http.CategoryDto'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Category'
+        "422":
+          description: Unprocessable Entity
+      summary: Update category by id
+      tags:
+      - category
+  /api/categories/{id}/words:
+    get:
+      parameters:
+      - description: category id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Word'
+            type: array
+      summary: Get all words by category id
+      tags:
+      - category
+  /api/words/:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Word'
+            type: array
+      summary: Get all words
+      tags:
+      - word
+    post:
+      parameters:
+      - description: word
+        in: body
+        name: word
+        required: true
+        schema:
+          $ref: '#/definitions/http.WordDto'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+        "422":
+          description: Unprocessable Entity
+      summary: Create new word
+      tags:
+      - word
+  /api/words/{id}:
+    delete:
+      parameters:
+      - description: word id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "422":
+          description: Unprocessable Entity
+      summary: Delete word by id
+      tags:
+      - word
+    get:
+      parameters:
+      - description: word id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Word'
+      summary: Get word by id
+      tags:
+      - word
+    put:
+      parameters:
+      - description: word id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: word
+        in: body
+        name: word
+        required: true
+        schema:
+          $ref: '#/definitions/http.WordDto'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Word'
+        "422":
+          description: Unprocessable Entity
+      summary: Update word by id
+      tags:
+      - word
+swagger: "2.0"
