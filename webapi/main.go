@@ -2,8 +2,11 @@ package main
 
 import (
 	"log"
-	_ "services/webapi/docs"
-	"services/webapi/server"
+	"os"
+	_ "webapi/docs"
+	"webapi/server"
+
+	"github.com/joho/godotenv"
 )
 
 // @title objects-service
@@ -18,8 +21,12 @@ import (
 //-- @name Authorization
 
 func main() {
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 	app := server.NewApp()
-	if err := app.Run("7000"); err != nil {
+	if err := app.Run(os.Getenv("port")); err != nil {
 		log.Fatalf("Server error: %s", err.Error())
 	}
 }

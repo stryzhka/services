@@ -3,9 +3,9 @@ package http
 import (
 	"encoding/json"
 	"net/http"
-	"services/webapi/category"
-	"services/webapi/models"
 	"strings"
+	"webapi/category"
+	"webapi/models"
 
 	"github.com/gorilla/mux"
 )
@@ -214,4 +214,3 @@ func (h *Handler) Update(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	w.Write(jsonCategory)
 }
-

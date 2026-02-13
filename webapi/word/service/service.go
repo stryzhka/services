@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
-	"services/webapi/models"
-	"services/webapi/word"
+	"webapi/models"
+	"webapi/word"
 
 	"github.com/google/uuid"
 )

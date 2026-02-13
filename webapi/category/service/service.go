@@ -2,9 +2,9 @@ package service
 
 import (
 	"context"
-	"services/webapi/category"
-	"services/webapi/models"
 	"strings"
+	"webapi/category"
+	"webapi/models"
 
 	"github.com/google/uuid"
 )

@@ -2,7 +2,7 @@ package word
 
 import (
 	"context"
-	"services/webapi/models"
+	"webapi/models"
 )
 
 type Service interface {

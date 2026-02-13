@@ -3,10 +3,10 @@ package repository
 import (
 	"context"
 	"log"
-	"services/webapi/models"
-	"services/webapi/word"
 	"strconv"
 	"testing"
+	"webapi/models"
+	"webapi/word"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-memdb"

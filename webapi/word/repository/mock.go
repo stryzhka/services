@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	"services/webapi/models"
+	"webapi/models"
 
 	"github.com/stretchr/testify/mock"
 )

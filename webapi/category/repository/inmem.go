@@ -3,8 +3,8 @@ package repository
 import (
 	"context"
 	"log"
-	"services/webapi/models"
-	category2 "services/webapi/category"
+	category2 "webapi/category"
+	"webapi/models"
 
 	"github.com/hashicorp/go-memdb"
 )

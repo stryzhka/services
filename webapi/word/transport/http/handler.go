@@ -3,9 +3,9 @@ package http
 import (
 	"encoding/json"
 	"net/http"
-	"services/webapi/models"
-	"services/webapi/word"
 	"strings"
+	"webapi/models"
+	"webapi/word"
 
 	"github.com/gorilla/mux"
 )

@@ -2,10 +2,10 @@ package service
 
 import (
 	"context"
-	"services/webapi/models"
-	"services/webapi/word"
-	"services/webapi/word/repository"
 	"testing"
+	"webapi/models"
+	"webapi/word"
+	"webapi/word/repository"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

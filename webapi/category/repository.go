@@ -2,7 +2,7 @@ package category
 
 import (
 	"context"
-	"services/webapi/models"
+	"webapi/models"
 )
 
 type Repository interface {
