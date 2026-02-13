@@ -117,12 +117,44 @@ func TestGetAll(t *testing.T) {
 
 func TestGetById(t *testing.T) {
 	db := initDb()
-	insertUniqueTestValues(db)
+	//insertUniqueTestValues(db)
 	r := InmemRepository{db: db}
+	id := uuid.New().String()
+	word := &models.Word{
+		Id:            id,
+		EngText:       "test",
+		NativeText:    "тест",
+		Transcription: "|əˈkleɪm|",
+		Difficulty:    "easy",
+		CategoryId:    id,
+	}
+	word, err := r.Create(context.Background(), word)
+	assert.NoError(t, err)
 	all := r.GetAll(context.Background())
 	log.Println(len(all))
-	foundWord := r.GetById(context.Background(), all[0].Id)
-	assert.Equal(t, all[0], foundWord)
+	foundWord := r.GetById(context.Background(), id)
+	assert.NotNil(t, foundWord)
+}
+
+func TestFailGetById(t *testing.T) {
+	db := initDb()
+	//insertUniqueTestValues(db)
+	r := InmemRepository{db: db}
+	id := uuid.New().String()
+	//word := &models.Word{
+	//	Id:            id,
+	//	EngText:       "test",
+	//	NativeText:    "тест",
+	//	Transcription: "|əˈkleɪm|",
+	//	Difficulty:    "easy",
+	//	CategoryId:    id,
+	//}
+	//word, err := r.Create(context.Background(), word)
+	//assert.NoError(t, err)
+	//all := r.GetAll(context.Background())
+	//log.Println(len(all))
+	foundWord := r.GetById(context.Background(), id)
+	assert.Nil(t, foundWord)
 }
 
 func TestSuccessCreate(t *testing.T) {

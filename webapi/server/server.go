@@ -69,11 +69,11 @@ func initWordDb() *memdb.MemDB {
 	return db
 }
 
-func insertTestValues(db *memdb.MemDB) {
+func insertTestValues(db *memdb.MemDB, count int) {
 	str := "test"
 	txn := db.Txn(true)
 	defer txn.Abort()
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < count; i++ {
 		testWord := &models.Word{
 			Id:            uuid.New().String(),
 			EngText:       str + strconv.Itoa(i),
@@ -97,7 +97,7 @@ type App struct {
 
 func NewApp() *App {
 	db := initWordDb()
-	insertTestValues(db)
+	insertTestValues(db, 3)
 	wordRepository := repository.NewInmemRepository(db)
 	wordService := service.NewWordService(wordRepository)
 	return &App{
@@ -109,6 +109,10 @@ func (a *App) Run(port string) error {
 	wordHandler := http2.NewHandler(a.wordService)
 	wordRouter := mux.NewRouter()
 	wordRouter.HandleFunc("/api/words/", wordHandler.GetAll).Methods("GET")
+	wordRouter.HandleFunc("/api/words/{id}", wordHandler.GetById).Methods("GET")
+	wordRouter.HandleFunc("/api/words/", wordHandler.Create).Methods("POST")
+	wordRouter.HandleFunc("/api/words/{id}", wordHandler.Delete).Methods("DELETE")
+	wordRouter.HandleFunc("/api/words/{id}", wordHandler.Update).Methods("PUT")
 	wordRouter.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
 	a.server = &http.Server{
 		Addr:           ":" + port,

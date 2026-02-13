@@ -6,6 +6,8 @@ import (
 	"services/webapi/models"
 	"services/webapi/word"
 	"strings"
+
+	"github.com/gorilla/mux"
 )
 
 type errorMessage struct {
@@ -46,10 +48,9 @@ func (h *Handler) Healthcheck(w http.ResponseWriter, req *http.Request) {
 
 // GetAll godoc
 // @Summary Get all words
-// @Tags profile
+// @Tags word
 // @Produce json
 // @Success 200 {array} models.Word
-// // @Failure 401
 // @Router /api/words/ [get]
 func (h *Handler) GetAll(w http.ResponseWriter, req *http.Request) {
 	var words []*models.Word
@@ -61,5 +62,152 @@ func (h *Handler) GetAll(w http.ResponseWriter, req *http.Request) {
 		jsonWords = []byte("[]")
 	}
 	w.Write(jsonWords)
+	return
+}
+
+// GetById godoc
+// @Summary Get word by id
+// @Tags word
+// @Produce json
+// @Param id path string true "word id"
+// @Success 200 {object} models.Word
+// @Router /api/words/{id} [get]
+func (h *Handler) GetById(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	id := vars["id"]
+	word := h.s.GetById(req.Context(), id)
+	jsonWord, err := json.Marshal(word)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if jsonWord == nil || err != nil || word == nil {
+		jsonWord = []byte("{}")
+	}
+	w.Write(jsonWord)
+	return
+}
+
+// Create godoc
+// @Summary Create new word
+// @Tags word
+// @Param word body WordDto required "word"
+// @Accepts json WordDto
+// @Produce json
+// @Success 201
+// @Failure 422
+// @Router /api/words/ [post]
+func (h *Handler) Create(w http.ResponseWriter, req *http.Request) {
+	createdWord := &WordDto{}
+	err := json.NewDecoder(req.Body).Decode(createdWord)
+	w.Header().Set("Content-Type", "application/json")
+	if err != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		msg, _ := json.Marshal(errorMessage{err.Error()})
+		w.Write(msg)
+		return
+	}
+	err = validateDto(createdWord)
+	if err != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		msg, _ := json.Marshal(errorMessage{err.Error()})
+		w.Write(msg)
+		return
+	}
+	word, err := h.s.Create(req.Context(), createdWord.EngText, createdWord.NativeText, createdWord.Transcription, createdWord.Difficulty, createdWord.CategoryId)
+	if err != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		msg, _ := json.Marshal(errorMessage{err.Error()})
+		w.Write(msg)
+		return
+	}
+	jsonWord, err := json.Marshal(word)
+	if err != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		msg, _ := json.Marshal(errorMessage{err.Error()})
+		w.Write(msg)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+	w.Write(jsonWord)
+	return
+}
+
+// Delete godoc
+// @Summary Delete word by id
+// @Tags word
+// @Param id path string true "word id"
+// @Produce json
+// @Success 200
+// @Failure 422
+// @Router /api/words/{id} [delete]
+func (h *Handler) Delete(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	id := vars["id"]
+	err := h.s.Delete(req.Context(), id)
+	w.Header().Set("Content-Type", "application/json")
+	if err != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		msg, _ := json.Marshal(errorMessage{err.Error()})
+		w.Write(msg)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	msg, _ := json.Marshal(message{"deleted successfully"})
+	w.Write(msg)
+	return
+}
+
+// Update godoc
+// @Summary Update word by id
+// @Tags word
+// @Param id path string true "word id"
+// @Param word body WordDto required "word"
+// @Success 200 {object} models.Word
+// @Accepts json WordDto
+// @Produce json
+// @Failure 422
+// @Router /api/words/{id} [put]
+func (h *Handler) Update(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	id := vars["id"]
+	updatedWord := &WordDto{}
+	err := json.NewDecoder(req.Body).Decode(updatedWord)
+	w.Header().Set("Content-Type", "application/json")
+	if err != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		msg, _ := json.Marshal(errorMessage{err.Error()})
+		w.Write(msg)
+		return
+	}
+	err = validateDto(updatedWord)
+	if err != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		msg, _ := json.Marshal(errorMessage{err.Error()})
+		w.Write(msg)
+		return
+	}
+	newWord := &models.Word{
+		Id:            id,
+		EngText:       updatedWord.EngText,
+		NativeText:    updatedWord.NativeText,
+		Transcription: updatedWord.Transcription,
+		Difficulty:    updatedWord.Difficulty,
+		CategoryId:    updatedWord.CategoryId,
+	}
+	word, err := h.s.UpdateById(req.Context(), id, newWord)
+	if err != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		msg, _ := json.Marshal(errorMessage{err.Error()})
+		w.Write(msg)
+		return
+	}
+	jsonWord, err := json.Marshal(word)
+	if err != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		msg, _ := json.Marshal(errorMessage{err.Error()})
+		w.Write(msg)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+	w.Write(jsonWord)
 	return
 }

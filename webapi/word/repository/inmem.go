@@ -42,6 +42,9 @@ func (m *InmemRepository) GetById(ctx context.Context, id string) *models.Word {
 		log.Println(err)
 		return nil
 	}
+	if found == nil {
+		return nil
+	}
 	return found.(*models.Word)
 }
 
@@ -49,8 +52,7 @@ func (m *InmemRepository) Create(ctx context.Context, word *models.Word) (*model
 	txn := m.db.Txn(true)
 	defer txn.Abort()
 
-	// Проверяем, существует ли уже запись с таким id
-	existing, err := txn.First("word", "id", word.Id)
+	existing, err := txn.First("word", "eng_text", word.EngText)
 	if err != nil {
 		return nil, err
 	}
