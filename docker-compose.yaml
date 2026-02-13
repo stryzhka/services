@@ -1,0 +1,16 @@
+services:
+  objects-service:
+    build:
+      context: ./webapi
+      dockerfile: Dockerfile
+    volumes:
+      - ./webapi:/go/src/app
+    ports:
+      - "8080:8080"
+    networks:
+      - app
+    environment:
+      - port=8080
+networks:
+  app:
+    driver: bridge
