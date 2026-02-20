@@ -130,11 +130,7 @@ func initMongo() (*mongo.Client, error) {
 	if err != nil {
 		panic(err)
 	}
-	defer func() {
-		if err = client.Disconnect(context.TODO()); err != nil {
-			panic(err)
-		}
-	}()
+
 	// Sends a ping to confirm a successful connection
 	var result bson.M
 	if err := client.Database("admin").RunCommand(context.TODO(), bson.D{{"ping", 1}}).Decode(&result); err != nil {
@@ -142,18 +138,19 @@ func initMongo() (*mongo.Client, error) {
 	}
 	log.Println("mongo connected")
 	return client, nil
-
 }
 
 type App struct {
 	wordService     wordpkg.Service
 	categoryService category.Service
 	server          *http.Server
+	mongoClient     *mongo.Client
 }
 
 func NewApp() *App {
 	//db := initWordDb()
 	client, err := initMongo()
+
 	if err != nil {
 		panic(err)
 	}
@@ -166,6 +163,7 @@ func NewApp() *App {
 	//categoryService := categorysvc.NewCategoryService(categoryRepository)
 	return &App{
 		wordService: wordService,
+		mongoClient: client,
 		//categoryService: categoryService,
 	}
 }
@@ -206,8 +204,17 @@ func (a *App) Run(port string) error {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, os.Interrupt)
 	<-quit
-	ctx, shutdown := context.WithTimeout(context.Background(), 5*time.Second)
-	defer shutdown()
-	return a.server.Shutdown(ctx)
+	return a.Shutdown()
 
+}
+
+func (a *App) Shutdown() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := a.mongoClient.Disconnect(ctx); err != nil {
+		log.Println("mongo disconnect error:", err)
+	}
+
+	return a.server.Shutdown(ctx)
 }
