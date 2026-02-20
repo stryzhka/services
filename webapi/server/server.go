@@ -9,6 +9,9 @@ import (
 	"strconv"
 	"time"
 	"webapi/category"
+	categoryrepo "webapi/category/repository"
+	"webapi/category/service"
+	http2 "webapi/category/transport/http"
 	"webapi/models"
 	wordpkg "webapi/word"
 	wordrepo "webapi/word/repository"
@@ -159,18 +162,18 @@ func NewApp() *App {
 	wordRepository := wordrepo.NewMongoWordRepository(client)
 	wordService := wordsvc.NewWordService(wordRepository)
 
-	//categoryRepository := categoryrepo.NewInmemRepository(db)
-	//categoryService := categorysvc.NewCategoryService(categoryRepository)
+	categoryRepository := categoryrepo.NewMongoCategoryRepository(client)
+	categoryService := service.NewCategoryService(categoryRepository)
 	return &App{
-		wordService: wordService,
-		mongoClient: client,
-		//categoryService: categoryService,
+		wordService:     wordService,
+		mongoClient:     client,
+		categoryService: categoryService,
 	}
 }
 
 func (a *App) Run(port string) error {
 	wordHandler := wordhttp.NewHandler(a.wordService)
-	//categoryHandler := categoryhttp.NewHandler(a.categoryService)
+	categoryHandler := http2.NewHandler(a.categoryService)
 	router := mux.NewRouter()
 
 	// word routes
@@ -181,12 +184,12 @@ func (a *App) Run(port string) error {
 	router.HandleFunc("/api/words/{id}", wordHandler.Update).Methods("PUT")
 
 	// category routes
-	//router.HandleFunc("/api/categories/", categoryHandler.GetAll).Methods("GET")
-	//router.HandleFunc("/api/categories/{id}", categoryHandler.GetById).Methods("GET")
-	//router.HandleFunc("/api/categories/", categoryHandler.Create).Methods("POST")
-	//router.HandleFunc("/api/categories/{id}", categoryHandler.Delete).Methods("DELETE")
-	//router.HandleFunc("/api/categories/{id}", categoryHandler.Update).Methods("PUT")
-	//router.HandleFunc("/api/categories/{id}/words", categoryHandler.GetAllWords).Methods("GET")
+	router.HandleFunc("/api/categories/", categoryHandler.GetAll).Methods("GET")
+	router.HandleFunc("/api/categories/{id}", categoryHandler.GetById).Methods("GET")
+	router.HandleFunc("/api/categories/", categoryHandler.Create).Methods("POST")
+	router.HandleFunc("/api/categories/{id}", categoryHandler.Delete).Methods("DELETE")
+	router.HandleFunc("/api/categories/{id}", categoryHandler.Update).Methods("PUT")
+	router.HandleFunc("/api/categories/{id}/words", categoryHandler.GetAllWords).Methods("GET")
 
 	router.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
 	a.server = &http.Server{
