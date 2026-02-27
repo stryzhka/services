@@ -36,9 +36,9 @@ func TestAdd100(t *testing.T) {
 	}
 }
 
-func TestAdd1000(t *testing.T) {
+func TestAdd100000(t *testing.T) {
 	client := &http.Client{}
-	for i := 0; i < 1001; i++ {
+	for i := 1; i < 100001; i++ {
 		word := &http2.WordDto{
 			EngText:       "test|" + strconv.Itoa(i),
 			NativeText:    "тест",

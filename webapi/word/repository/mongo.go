@@ -2,11 +2,13 @@ package repository
 
 import (
 	"context"
+	"log"
 	"webapi/models"
 	"webapi/word"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type MongoWordRepository struct {
@@ -15,6 +17,27 @@ type MongoWordRepository struct {
 
 func (m *MongoWordRepository) GetAll(ctx context.Context) []*models.Word {
 	coll := m.c.Database("words").Collection("words")
+	count, err := coll.CountDocuments(ctx, bson.D{})
+	if err != nil {
+		return nil
+	}
+	if count > 1000 {
+		stage := bson.D{{"$sample", bson.D{{"size", 50}}}}
+		res, err := coll.Aggregate(ctx, mongo.Pipeline{stage}, options.Aggregate())
+		if err != nil {
+			log.Println(err)
+			return nil
+		}
+		var words []*models.Word
+		if err = res.All(context.TODO(), &words); err != nil {
+			log.Println(err)
+		}
+		err = res.Decode(&words)
+		if err != nil {
+			log.Println(err)
+		}
+		return words
+	}
 	cursor, err := coll.Find(ctx, bson.D{})
 	if err != nil {
 		return nil
