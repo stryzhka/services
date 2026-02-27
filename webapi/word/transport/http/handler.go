@@ -2,12 +2,13 @@ package http
 
 import (
 	"encoding/json"
+	"github.com/gorilla/mux"
+	"github.com/gorilla/schema"
+	"log"
 	"net/http"
 	"strings"
 	"webapi/models"
 	"webapi/word"
-
-	"github.com/gorilla/mux"
 )
 
 type errorMessage struct {
@@ -50,11 +51,18 @@ func (h *Handler) Healthcheck(w http.ResponseWriter, req *http.Request) {
 // @Summary Get all words
 // @Tags word
 // @Produce json
+// @Param difficulty query string false "Filter by difficulty"
 // @Success 200 {array} models.Word
 // @Router /api/words/ [get]
 func (h *Handler) GetAll(w http.ResponseWriter, req *http.Request) {
 	var words []*models.Word
-	words = h.s.GetAll(req.Context())
+	decoder := schema.NewDecoder()
+	filter := word.WordFilter{Difficulty: ""}
+	err := decoder.Decode(&filter, req.URL.Query())
+	if err != nil {
+		log.Println(err)
+	}
+	words = h.s.GetAll(req.Context(), filter)
 	jsonWords, err := json.Marshal(words)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

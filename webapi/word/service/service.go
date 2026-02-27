@@ -23,8 +23,8 @@ func validateWord(w models.Word) error {
 	return nil
 }
 
-func (w *WordService) GetAll(ctx context.Context) []*models.Word {
-	return w.r.GetAll(ctx)
+func (w *WordService) GetAll(ctx context.Context, filter word.WordFilter) []*models.Word {
+	return w.r.GetAll(ctx, filter)
 }
 
 func (w *WordService) GetById(ctx context.Context, id string) *models.Word {

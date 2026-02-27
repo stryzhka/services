@@ -10,8 +10,8 @@ import (
 	"time"
 	"webapi/category"
 	categoryrepo "webapi/category/repository"
-	categorysvc "webapi/category/service"
-	categoryhttp "webapi/category/transport/http"
+	"webapi/category/service"
+	http2 "webapi/category/transport/http"
 	"webapi/models"
 	wordpkg "webapi/word"
 	wordrepo "webapi/word/repository"
@@ -22,6 +22,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/hashicorp/go-memdb"
 	httpSwagger "github.com/swaggo/http-swagger"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 func initWordDb() *memdb.MemDB {
@@ -88,50 +91,89 @@ func initWordDb() *memdb.MemDB {
 	return db
 }
 
-func insertTestValues(db *memdb.MemDB, count int) {
+func insertTestValues(db *memdb.MemDB, wordsCount int) {
 	str := "test"
 	txn := db.Txn(true)
 	defer txn.Abort()
-	for i := 0; i < count; i++ {
-		testWord := &models.Word{
-			Id:            uuid.New().String(),
-			EngText:       str + strconv.Itoa(i),
-			NativeText:    str + strconv.Itoa(i),
-			Transcription: str + strconv.Itoa(i),
-			Difficulty:    str + strconv.Itoa(i),
-			CategoryId:    uuid.Nil.String(),
+	categoryNames := []string{"food", "it", "places"}
+	for _, v := range categoryNames {
+		testCategory := &models.Category{
+			Id:   uuid.New().String(),
+			Name: v,
 		}
-		err := txn.Insert("word", testWord)
+		err := txn.Insert("category", testCategory)
 		if err != nil {
 			panic(err)
 		}
+		for i := 0; i < wordsCount; i++ {
+			testWord := &models.Word{
+				Id:            uuid.New().String(),
+				EngText:       str + strconv.Itoa(i),
+				NativeText:    str + strconv.Itoa(i),
+				Transcription: str + strconv.Itoa(i),
+				Difficulty:    str + strconv.Itoa(i),
+				CategoryId:    testCategory.Id,
+			}
+			err := txn.Insert("word", testWord)
+			if err != nil {
+				panic(err)
+			}
+		}
 	}
 	txn.Commit()
+}
+
+func initMongo() (*mongo.Client, error) {
+	connectionString := os.Getenv("MONGODB_URI")
+	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
+	// Defines the options for the MongoDB client
+	opts := options.Client().ApplyURI(connectionString).SetServerAPIOptions(serverAPI)
+	// Creates a new client and connects to the server
+	client, err := mongo.Connect(opts)
+	if err != nil {
+		panic(err)
+	}
+
+	// Sends a ping to confirm a successful connection
+	var result bson.M
+	if err := client.Database("admin").RunCommand(context.TODO(), bson.D{{"ping", 1}}).Decode(&result); err != nil {
+		return nil, err
+	}
+	log.Println("mongo connected")
+	return client, nil
 }
 
 type App struct {
 	wordService     wordpkg.Service
 	categoryService category.Service
 	server          *http.Server
+	mongoClient     *mongo.Client
 }
 
 func NewApp() *App {
-	db := initWordDb()
-	insertTestValues(db, 3)
-	wordRepository := wordrepo.NewInmemRepository(db)
+	//db := initWordDb()
+	client, err := initMongo()
+
+	if err != nil {
+		panic(err)
+	}
+	//insertTestValues(db, 3)
+	//wordRepository := wordrepo.NewInmemRepository(db)
+	wordRepository := wordrepo.NewMongoWordRepository(client)
 	wordService := wordsvc.NewWordService(wordRepository)
 
-	categoryRepository := categoryrepo.NewInmemRepository(db)
-	categoryService := categorysvc.NewCategoryService(categoryRepository)
+	categoryRepository := categoryrepo.NewMongoCategoryRepository(client)
+	categoryService := service.NewCategoryService(categoryRepository)
 	return &App{
 		wordService:     wordService,
+		mongoClient:     client,
 		categoryService: categoryService,
 	}
 }
 
 func (a *App) Run(port string) error {
 	wordHandler := wordhttp.NewHandler(a.wordService)
-	categoryHandler := categoryhttp.NewHandler(a.categoryService)
+	categoryHandler := http2.NewHandler(a.categoryService)
 	router := mux.NewRouter()
 
 	// word routes
@@ -165,8 +207,17 @@ func (a *App) Run(port string) error {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, os.Interrupt)
 	<-quit
-	ctx, shutdown := context.WithTimeout(context.Background(), 5*time.Second)
-	defer shutdown()
-	return a.server.Shutdown(ctx)
+	return a.Shutdown()
 
+}
+
+func (a *App) Shutdown() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := a.mongoClient.Disconnect(ctx); err != nil {
+		log.Println("mongo disconnect error:", err)
+	}
+
+	return a.server.Shutdown(ctx)
 }

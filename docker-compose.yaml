@@ -11,6 +11,20 @@ services:
       - app
     environment:
       - port=8080
+      - MONGODB_URI=mongodb://admin:admin@mongodb:27017/test?authSource=admin
+  mongodb:
+    image: mongo
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=test
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=admin
+    volumes:
+      - './data:/data/db'
+    networks:
+      - app
 networks:
   app:
     driver: bridge
