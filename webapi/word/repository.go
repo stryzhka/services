@@ -6,7 +6,7 @@ import (
 )
 
 type Repository interface {
-	GetAll(ctx context.Context) []*models.Word
+	GetAll(ctx context.Context, filter WordFilter) []*models.Word
 	GetById(ctx context.Context, id string) *models.Word
 	Create(ctx context.Context, word *models.Word) (*models.Word, error)
 	UpdateById(ctx context.Context, id string, word *models.Word) (*models.Word, error)

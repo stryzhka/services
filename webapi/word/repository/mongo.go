@@ -15,15 +15,20 @@ type MongoWordRepository struct {
 	c *mongo.Client
 }
 
-func (m *MongoWordRepository) GetAll(ctx context.Context) []*models.Word {
+func (m *MongoWordRepository) GetAll(ctx context.Context, filter word.WordFilter) []*models.Word {
 	coll := m.c.Database("words").Collection("words")
-	count, err := coll.CountDocuments(ctx, bson.D{})
+	count, err := coll.CountDocuments(ctx, filter.ToBSON())
+	opts := options.Find().SetSort(bson.D{})
+
+	log.Println(filter.ToBSON().String())
 	if err != nil {
 		return nil
 	}
 	if count > 1000 {
-		stage := bson.D{{"$sample", bson.D{{"size", 50}}}}
-		res, err := coll.Aggregate(ctx, mongo.Pipeline{stage}, options.Aggregate())
+		matchStage := bson.D{{"$match", filter.ToBSON()}}
+		sampleStage := bson.D{{"$sample", bson.D{{"size", 50}}}}
+		res, err := coll.Aggregate(ctx, mongo.Pipeline{matchStage, sampleStage})
+
 		if err != nil {
 			log.Println(err)
 			return nil
@@ -32,13 +37,10 @@ func (m *MongoWordRepository) GetAll(ctx context.Context) []*models.Word {
 		if err = res.All(context.TODO(), &words); err != nil {
 			log.Println(err)
 		}
-		err = res.Decode(&words)
-		if err != nil {
-			log.Println(err)
-		}
 		return words
 	}
-	cursor, err := coll.Find(ctx, bson.D{})
+
+	cursor, err := coll.Find(ctx, filter.ToBSON(), opts)
 	if err != nil {
 		return nil
 	}
