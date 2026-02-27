@@ -51,6 +51,7 @@ func (h *Handler) Healthcheck(w http.ResponseWriter, req *http.Request) {
 // @Summary Get all words
 // @Tags word
 // @Produce json
+// @Param difficulty query string false "Filter by difficulty"
 // @Success 200 {array} models.Word
 // @Router /api/words/ [get]
 func (h *Handler) GetAll(w http.ResponseWriter, req *http.Request) {

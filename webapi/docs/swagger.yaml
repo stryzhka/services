@@ -162,6 +162,11 @@ paths:
       - category
   /api/words/:
     get:
+      parameters:
+      - description: Filter by difficulty
+        in: query
+        name: difficulty
+        type: string
       produces:
       - application/json
       responses:

@@ -197,6 +197,14 @@ const docTemplate = `{
                     "word"
                 ],
                 "summary": "Get all words",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by difficulty",
+                        "name": "difficulty",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
