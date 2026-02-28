@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"time"
@@ -19,15 +20,35 @@ type MongoWordRepository struct {
 }
 
 func (m *MongoWordRepository) GetAll(ctx context.Context, filter word.WordFilter) []*models.Word {
+	var key string
+	key = fmt.Sprintf("word:%s", filter.ToBSON().String())
+	cacheRes, err := m.redis.GetMany(ctx, key)
+	if err != nil {
+		log.Println(err)
+		//return nil
+	}
+	if cacheRes != nil {
+		var res []*models.Word
+		err = json.Unmarshal(cacheRes, &res)
+		if err != nil {
+			log.Println(err)
+			return nil
+		}
+		return res
+	}
+	if err != nil {
+		log.Println(err)
+	}
 	coll := m.c.Database("words").Collection("words")
 	count, err := coll.CountDocuments(ctx, filter.ToBSON())
 	opts := options.Find().SetSort(bson.D{})
 
-	log.Println(filter.ToBSON().String())
+	//log.Println(filter.ToBSON().String())
 	if err != nil {
 		return nil
 	}
 	if count > 1000 {
+
 		matchStage := bson.D{{"$match", filter.ToBSON()}}
 		sampleStage := bson.D{{"$sample", bson.D{{"size", 50}}}}
 		res, err := coll.Aggregate(ctx, mongo.Pipeline{matchStage, sampleStage})
@@ -40,6 +61,7 @@ func (m *MongoWordRepository) GetAll(ctx context.Context, filter word.WordFilter
 		if err = res.All(context.TODO(), &words); err != nil {
 			log.Println(err)
 		}
+		_, err = m.redis.Set(ctx, key, 1000*time.Second, words)
 		return words
 	}
 
@@ -52,12 +74,12 @@ func (m *MongoWordRepository) GetAll(ctx context.Context, filter word.WordFilter
 	if err = cursor.All(ctx, &words); err != nil {
 		return nil
 	}
-	//log.Println(err)
+	_, err = m.redis.Set(ctx, key, 1000*time.Second, words)
 	return words
 }
 
 func (m *MongoWordRepository) GetById(ctx context.Context, id string) *models.Word {
-	key := fmt.Sprintf("user:%s", id)
+	key := fmt.Sprintf("word:%s", id)
 	cacheRes, err := m.redis.GetOne(ctx, key)
 	if err != nil {
 		log.Println(err)
@@ -90,6 +112,10 @@ func (m *MongoWordRepository) Create(ctx context.Context, word *models.Word) (*m
 	if err != nil {
 		return nil, err
 	}
+	err = m.redis.InvalidateAll(ctx)
+	if err != nil {
+		log.Println(err)
+	}
 	return word, err
 }
 
@@ -98,6 +124,15 @@ func (m *MongoWordRepository) UpdateById(ctx context.Context, id string, word *m
 	filter := bson.M{"_id": id}
 	update := bson.M{"$set": word}
 	_, err := coll.UpdateOne(ctx, filter, update)
+	key := fmt.Sprintf("word:%s", id)
+	_, err = m.redis.Set(ctx, key, 20*time.Second, word)
+	if err != nil {
+		log.Println(err)
+	}
+	err = m.redis.InvalidateAll(ctx)
+	if err != nil {
+		log.Println(err)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -112,6 +147,10 @@ func (m *MongoWordRepository) Delete(ctx context.Context, id string) error {
 	}
 	if result.DeletedCount == 0 {
 		return word.ErrWordNotFound
+	}
+	err = m.redis.InvalidateAll(ctx)
+	if err != nil {
+		log.Println(err)
 	}
 	return nil
 }

@@ -36,21 +36,12 @@ func (c *RedisWordCache) GetOne(ctx context.Context, key string) (interface{}, e
 	return result, nil
 }
 
-func (c *RedisWordCache) GetMany(ctx context.Context, key string) ([]interface{}, error) {
+func (c *RedisWordCache) GetMany(ctx context.Context, key string) ([]byte, error) {
 	val, err := c.r.Get(ctx, key).Result()
-	if err == redis.Nil {
+	if err == redis.Nil || err != nil {
 		return nil, nil
 	}
-	if err != nil {
-		return nil, err
-	}
-
-	var result []interface{}
-	if err := json.Unmarshal([]byte(val), &result); err != nil {
-		return nil, err
-	}
-
-	return result, nil
+	return []byte(val), nil
 }
 
 func (c *RedisWordCache) Set(ctx context.Context, key string, exp time.Duration, value interface{}) (bool, error) {
@@ -72,4 +63,22 @@ func (c *RedisWordCache) Delete(ctx context.Context, key string) (bool, error) {
 		return false, err
 	}
 	return deleted > 0, nil
+}
+
+func (c *RedisWordCache) InvalidateAll(ctx context.Context) error {
+	var cursor uint64
+	for {
+		keys, nextCursor, err := c.r.Scan(ctx, cursor, "word:*", 100).Result()
+		if err != nil {
+			return err
+		}
+		if len(keys) > 0 {
+			c.r.Del(ctx, keys...)
+		}
+		cursor = nextCursor
+		if cursor == 0 {
+			break
+		}
+	}
+	return nil
 }
