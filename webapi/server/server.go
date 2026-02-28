@@ -14,6 +14,7 @@ import (
 	http2 "webapi/category/transport/http"
 	"webapi/models"
 	wordpkg "webapi/word"
+	"webapi/word/cache"
 	wordrepo "webapi/word/repository"
 	wordsvc "webapi/word/service"
 	wordhttp "webapi/word/transport/http"
@@ -21,6 +22,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/hashicorp/go-memdb"
+	"github.com/redis/go-redis/v9"
 	httpSwagger "github.com/swaggo/http-swagger"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -143,23 +145,41 @@ func initMongo() (*mongo.Client, error) {
 	return client, nil
 }
 
+func initRedis() (*redis.Client, error) {
+	log.Println("redis on", os.Getenv("redis_uri"))
+	client := redis.NewClient(&redis.Options{
+		Addr:     os.Getenv("redis_uri"),
+		Password: os.Getenv("redis_password"),
+		DB:       0,
+	})
+	err := client.Set(context.Background(), "foo", "bar", 0).Err()
+	if err != nil {
+		panic(err)
+	} else {
+		log.Println("redis connected")
+	}
+	return client, nil
+}
+
 type App struct {
 	wordService     wordpkg.Service
 	categoryService category.Service
 	server          *http.Server
 	mongoClient     *mongo.Client
+	redisClient     *redis.Client
 }
 
 func NewApp() *App {
 	//db := initWordDb()
 	client, err := initMongo()
-
+	redisClient, _ := initRedis()
 	if err != nil {
 		panic(err)
 	}
 	//insertTestValues(db, 3)
 	//wordRepository := wordrepo.NewInmemRepository(db)
-	wordRepository := wordrepo.NewMongoWordRepository(client)
+	redis := cache.NewRedisWordCache(redisClient)
+	wordRepository := wordrepo.NewMongoWordRepository(client, redis)
 	wordService := wordsvc.NewWordService(wordRepository)
 
 	categoryRepository := categoryrepo.NewMongoCategoryRepository(client)
@@ -217,6 +237,9 @@ func (a *App) Shutdown() error {
 
 	if err := a.mongoClient.Disconnect(ctx); err != nil {
 		log.Println("mongo disconnect error:", err)
+	}
+	if err := a.redisClient.Close(); err != nil {
+		log.Println("redis disconnect error:", err)
 	}
 
 	return a.server.Shutdown(ctx)
