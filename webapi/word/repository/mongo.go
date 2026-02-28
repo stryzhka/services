@@ -2,7 +2,9 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"time"
 	"webapi/models"
 	"webapi/word"
 
@@ -12,7 +14,8 @@ import (
 )
 
 type MongoWordRepository struct {
-	c *mongo.Client
+	c     *mongo.Client
+	redis word.Cache
 }
 
 func (m *MongoWordRepository) GetAll(ctx context.Context, filter word.WordFilter) []*models.Word {
@@ -54,12 +57,26 @@ func (m *MongoWordRepository) GetAll(ctx context.Context, filter word.WordFilter
 }
 
 func (m *MongoWordRepository) GetById(ctx context.Context, id string) *models.Word {
+	key := fmt.Sprintf("user:%s", id)
+	cacheRes, err := m.redis.GetOne(ctx, key)
+	if err != nil {
+		log.Println(err)
+		//return nil
+	}
+	if cacheRes != nil {
+		return cacheRes.(*models.Word)
+	}
 	coll := m.c.Database("words").Collection("words")
 	sort := bson.D{{"_id", id}}
 	res := coll.FindOne(ctx, sort)
 	var word *models.Word
-	err := res.Decode(&word)
+	err = res.Decode(&word)
 	if err != nil {
+		return nil
+	}
+	_, err = m.redis.Set(ctx, key, 20*time.Second, word)
+	if err != nil {
+		log.Println(err)
 		return nil
 	}
 	//log.Println(err)
@@ -99,6 +116,9 @@ func (m *MongoWordRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func NewMongoWordRepository(c *mongo.Client) *MongoWordRepository {
-	return &MongoWordRepository{c}
+func NewMongoWordRepository(c *mongo.Client, redis word.Cache) *MongoWordRepository {
+	return &MongoWordRepository{
+		c:     c,
+		redis: redis,
+	}
 }

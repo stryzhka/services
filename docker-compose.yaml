@@ -12,6 +12,8 @@ services:
     environment:
       - port=8080
       - MONGODB_URI=mongodb://admin:admin@mongodb:27017/test?authSource=admin
+      - redis_uri=redis:6379
+      - redis_password=redis
   mongodb:
     image: mongo
     container_name: mongodb
@@ -25,6 +27,18 @@ services:
       - './data:/data/db'
     networks:
       - app
+  redis:
+    image: redis
+    container_name: redis
+    ports:
+      - "6379:6379"
+    command: redis-server --save 20 1 --loglevel warning --requirepass redis
+    volumes:
+      - cache:/data
+    networks:
+      - app
 networks:
   app:
     driver: bridge
+volumes:
+  cache:
