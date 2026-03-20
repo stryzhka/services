@@ -2,13 +2,14 @@ package http
 
 import (
 	"encoding/json"
-	"github.com/gorilla/mux"
-	"github.com/gorilla/schema"
 	"log"
 	"net/http"
 	"strings"
 	"webapi/models"
 	"webapi/word"
+
+	"github.com/gorilla/mux"
+	"github.com/gorilla/schema"
 )
 
 type errorMessage struct {
@@ -19,16 +20,27 @@ type message struct {
 	Message string `json:"message"`
 }
 
-type WordDto struct {
-	EngText       string `json:"eng_text"`
-	NativeText    string `json:"native_text"`
-	Transcription string `json:"transcription"`
-	Difficulty    string `json:"difficulty"`
-	CategoryId    string `json:"category_id"` //TODO тут по другому тоже но мне лень
+type WordDtoIn struct {
+	EngText         string `json:"eng_text"`
+	NativeText      string `json:"native_text"`
+	Transcription   string `json:"transcription"`
+	Difficulty      string `json:"difficulty"`
+	CategoryId      string `json:"category_id"`
+	ConfirmedUserId string `json:"confirmed_user_id"`
 }
 
-func validateDto(dto *WordDto) error {
-	if strings.TrimSpace(dto.EngText) == "" || strings.TrimSpace(dto.NativeText) == "" || strings.TrimSpace(dto.Transcription) == "" || strings.TrimSpace(dto.Difficulty) == "" {
+//type WordDtoOut struct {
+//	EngText         string `json:"eng_text"`
+//	NativeText      string `json:"native_text"`
+//	Transcription   string `json:"transcription"`
+//	Difficulty      string `json:"difficulty"`
+//	CategoryId      string `json:"category_id"`
+//	ConfirmedUserId string `json:"confirmed_user_id"`
+//	ConfirmedStatus string `json:"confirmed_status"`
+//}
+
+func validateDto(dto *WordDtoIn) error {
+	if strings.TrimSpace(dto.EngText) == "" || strings.TrimSpace(dto.NativeText) == "" || strings.TrimSpace(dto.Transcription) == "" || strings.TrimSpace(dto.Difficulty) == "" || strings.TrimSpace(dto.ConfirmedUserId) == "" {
 		return word.ErrValidation
 	}
 	return nil
@@ -97,14 +109,14 @@ func (h *Handler) GetById(w http.ResponseWriter, req *http.Request) {
 // Create godoc
 // @Summary Create new word
 // @Tags word
-// @Param word body WordDto required "word"
-// @Accepts json WordDto
+// @Param word body WordDtoIn required "word"
+// @Accepts json WordDtoIn
 // @Produce json
 // @Success 201
 // @Failure 422
 // @Router /api/words/ [post]
 func (h *Handler) Create(w http.ResponseWriter, req *http.Request) {
-	createdWord := &WordDto{}
+	createdWord := &WordDtoIn{}
 	err := json.NewDecoder(req.Body).Decode(createdWord)
 	w.Header().Set("Content-Type", "application/json")
 	if err != nil {
@@ -120,7 +132,7 @@ func (h *Handler) Create(w http.ResponseWriter, req *http.Request) {
 		w.Write(msg)
 		return
 	}
-	word, err := h.s.Create(req.Context(), createdWord.EngText, createdWord.NativeText, createdWord.Transcription, createdWord.Difficulty, createdWord.CategoryId)
+	word, err := h.s.Create(req.Context(), createdWord.EngText, createdWord.NativeText, createdWord.Transcription, createdWord.Difficulty, createdWord.CategoryId, createdWord.ConfirmedUserId)
 	if err != nil {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		msg, _ := json.Marshal(errorMessage{err.Error()})
@@ -168,16 +180,16 @@ func (h *Handler) Delete(w http.ResponseWriter, req *http.Request) {
 // @Summary Update word by id
 // @Tags word
 // @Param id path string true "word id"
-// @Param word body WordDto required "word"
+// @Param word body WordDtoIn required "word"
 // @Success 200 {object} models.Word
-// @Accepts json WordDto
+// @Accepts json WordDtoIn
 // @Produce json
 // @Failure 422
 // @Router /api/words/{id} [put]
 func (h *Handler) Update(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id := vars["id"]
-	updatedWord := &WordDto{}
+	updatedWord := &WordDtoIn{}
 	err := json.NewDecoder(req.Body).Decode(updatedWord)
 	w.Header().Set("Content-Type", "application/json")
 	if err != nil {

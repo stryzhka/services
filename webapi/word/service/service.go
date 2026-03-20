@@ -17,7 +17,7 @@ func NewWordService(r word.Repository) *WordService {
 }
 
 func validateWord(w models.Word) error {
-	if len(w.EngText) == 0 || len(w.NativeText) == 0 || len(w.Difficulty) == 0 {
+	if len(w.EngText) == 0 || len(w.NativeText) == 0 || len(w.Difficulty) == 0 || len(w.ConfirmedUserId) == 0 {
 		return word.ErrValidation
 	}
 	return nil
@@ -31,19 +31,21 @@ func (w *WordService) GetById(ctx context.Context, id string) *models.Word {
 	return w.r.GetById(ctx, id)
 }
 
-func (w *WordService) Create(ctx context.Context, engText, nativeText, transcription, difficulty, categoryId string) (*models.Word, error) {
+func (w *WordService) Create(ctx context.Context, engText, nativeText, transcription, difficulty, categoryId, confirmedUserId string) (*models.Word, error) {
 
 	categoryUuid, err := uuid.Parse(categoryId)
 	if err != nil {
 		categoryUuid = uuid.Nil
 	}
 	word := &models.Word{
-		Id:            uuid.New().String(),
-		EngText:       engText,
-		NativeText:    nativeText,
-		Transcription: transcription,
-		Difficulty:    difficulty,
-		CategoryId:    categoryUuid.String(),
+		Id:              uuid.New().String(),
+		EngText:         engText,
+		NativeText:      nativeText,
+		Transcription:   transcription,
+		Difficulty:      difficulty,
+		CategoryId:      categoryUuid.String(),
+		ConfirmedUserId: confirmedUserId,
+		ConfirmedStatus: "pending",
 	}
 	err = validateWord(*word)
 	if err != nil {

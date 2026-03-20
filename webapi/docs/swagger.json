@@ -225,7 +225,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/http.WordDto"
+                            "$ref": "#/definitions/http.WordDtoIn"
                         }
                     }
                 ],
@@ -288,7 +288,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/http.WordDto"
+                            "$ref": "#/definitions/http.WordDtoIn"
                         }
                     }
                 ],
@@ -341,11 +341,13 @@
                 }
             }
         },
-        "http.WordDto": {
+        "http.WordDtoIn": {
             "type": "object",
             "properties": {
                 "category_id": {
-                    "description": "TODO тут по другому тоже но мне лень",
+                    "type": "string"
+                },
+                "confirmed_user_id": {
                     "type": "string"
                 },
                 "difficulty": {
@@ -378,6 +380,12 @@
             "type": "object",
             "properties": {
                 "category_id": {
+                    "type": "string"
+                },
+                "confirmed_status": {
+                    "type": "string"
+                },
+                "confirmed_user_id": {
                     "type": "string"
                 },
                 "difficulty": {

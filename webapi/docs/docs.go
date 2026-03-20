@@ -232,7 +232,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/http.WordDto"
+                            "$ref": "#/definitions/http.WordDtoIn"
                         }
                     }
                 ],
@@ -295,7 +295,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/http.WordDto"
+                            "$ref": "#/definitions/http.WordDtoIn"
                         }
                     }
                 ],
@@ -348,11 +348,13 @@ const docTemplate = `{
                 }
             }
         },
-        "http.WordDto": {
+        "http.WordDtoIn": {
             "type": "object",
             "properties": {
                 "category_id": {
-                    "description": "TODO тут по другому тоже но мне лень",
+                    "type": "string"
+                },
+                "confirmed_user_id": {
                     "type": "string"
                 },
                 "difficulty": {
@@ -385,6 +387,12 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "category_id": {
+                    "type": "string"
+                },
+                "confirmed_status": {
+                    "type": "string"
+                },
+                "confirmed_user_id": {
                     "type": "string"
                 },
                 "difficulty": {

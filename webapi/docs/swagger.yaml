@@ -5,10 +5,11 @@ definitions:
       name:
         type: string
     type: object
-  http.WordDto:
+  http.WordDtoIn:
     properties:
       category_id:
-        description: TODO тут по другому тоже но мне лень
+        type: string
+      confirmed_user_id:
         type: string
       difficulty:
         type: string
@@ -30,6 +31,10 @@ definitions:
   models.Word:
     properties:
       category_id:
+        type: string
+      confirmed_status:
+        type: string
+      confirmed_user_id:
         type: string
       difficulty:
         type: string
@@ -186,7 +191,7 @@ paths:
         name: word
         required: true
         schema:
-          $ref: '#/definitions/http.WordDto'
+          $ref: '#/definitions/http.WordDtoIn'
       produces:
       - application/json
       responses:
@@ -244,7 +249,7 @@ paths:
         name: word
         required: true
         schema:
-          $ref: '#/definitions/http.WordDto'
+          $ref: '#/definitions/http.WordDtoIn'
       produces:
       - application/json
       responses:
