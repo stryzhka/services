@@ -17,10 +17,23 @@ public class MongoUserRepository(MongoClient client) : IUserRepository
 
     public async Task<User> GetByIdAsync(Guid id)
     {
-        var collection = _client.GetDatabase("confirmation").GetCollection<User>("users");
+        var collection = _client.GetDatabase("words").GetCollection<User>("users");
         var filter = Builders<User>.Filter.Eq("_id", id.ToString());
     
         var user = await collection.Find(filter).FirstOrDefaultAsync();
+        return user;
+    }
+    
+    public async Task<User> VerifyUser(string name, string password)
+    {
+        var collection = _client.GetDatabase("words").GetCollection<User>("users");
+        
+        var filter = Builders<User>.Filter.And(
+                Builders<User>.Filter.Eq("name", name.ToString()),
+                Builders<User>.Filter.Eq("password", password.ToString())        
+            );
+        var user = await collection.Find(filter).FirstOrDefaultAsync();
+        Console.WriteLine(user);
         return user;
     }
 }

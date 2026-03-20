@@ -5,5 +5,5 @@ public interface IUserRepository
 {
     Task CreateAsync(User user);
     Task<User?> GetByIdAsync(Guid id);
-    // Task UpdateAsync(User user);
+    Task<User?> VerifyUser(string name, string password);
 }
