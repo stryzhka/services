@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Confirmation.Api/Confirmation.Api.csproj" />
+  <Project Path="Confirmation.Application/Confirmation.Application.csproj" />
+  <Project Path="Confirmation.Core/Confirmation.Core.csproj" />
+  <Project Path="Confirmation.Infrastructure/Confirmation.Infrastructure.csproj" />
+</Solution>
