@@ -9,11 +9,15 @@ import (
 )
 
 type WordService struct {
-	r word.Repository
+	r              word.Repository
+	eventPublisher word.EventPublisher
 }
 
-func NewWordService(r word.Repository) *WordService {
-	return &WordService{r: r}
+func NewWordService(r word.Repository, e word.EventPublisher) *WordService {
+	return &WordService{
+		r:              r,
+		eventPublisher: e,
+	}
 }
 
 func validateWord(w models.Word) error {
@@ -37,7 +41,7 @@ func (w *WordService) Create(ctx context.Context, engText, nativeText, transcrip
 	if err != nil {
 		categoryUuid = uuid.Nil
 	}
-	word := &models.Word{
+	_word := &models.Word{
 		Id:              uuid.New().String(),
 		EngText:         engText,
 		NativeText:      nativeText,
@@ -47,11 +51,16 @@ func (w *WordService) Create(ctx context.Context, engText, nativeText, transcrip
 		ConfirmedUserId: confirmedUserId,
 		ConfirmedStatus: "pending",
 	}
-	err = validateWord(*word)
+	err = validateWord(*_word)
 	if err != nil {
 		return nil, err
 	}
-	return w.r.Create(ctx, word)
+	e := &word.WordConfirmMessage{UserId: _word.ConfirmedUserId}
+	err = w.eventPublisher.Publish(ctx, "obj-to-users", _word.Id, e)
+	if err != nil {
+		return nil, err
+	}
+	return w.r.Create(ctx, _word)
 }
 
 func (w *WordService) UpdateById(ctx context.Context, id string, newWord *models.Word) (*models.Word, error) {
