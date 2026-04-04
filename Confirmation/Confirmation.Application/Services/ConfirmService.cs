@@ -9,12 +9,14 @@ namespace Confirmation.Application.Services;
 public class ConfirmService : IConfirmService
 {
     private readonly ILogger<ConfirmService> _logger;
+    private readonly IEventPublisher _publisher;
     private readonly IUserRepository _userRepository;
     
-    public ConfirmService(ILogger<ConfirmService> logger, IUserRepository userRepository) 
+    public ConfirmService(IEventPublisher publisher, ILogger<ConfirmService> logger, IUserRepository userRepository) 
     {
         _logger = logger;
         _userRepository = userRepository;
+        _publisher = publisher;
     }
 
     public async Task ConfirmObjectAsync(GotConfirmRequestEvent @event, CancellationToken ct)
@@ -34,7 +36,12 @@ public class ConfirmService : IConfirmService
             return;
         }
 
-        _logger.LogInformation("doing things...");
+        // _logger.LogInformation("doing things...");
+        await _publisher.PublishAsync("users-to-obj", new
+        {
+            object_id = @event.ObjectId,
+            confirmed_at = DateTime.UtcNow
+        }, ct);
         await Task.CompletedTask;
     }
     

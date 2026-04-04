@@ -18,6 +18,7 @@ builder.Services.AddApplication(builder.Configuration);
 builder.Services.AddScoped<IConfirmService, ConfirmService>();
 builder.Services.AddSingleton<KafkaConsumerHandler>();
 builder.Services.AddHostedService<KafkaWorkerService>();
+builder.Services.AddSingleton<IEventPublisher, KafkaEventPublisher>();
 // builder.Services.AddOpenApi();
 
 var app = builder.Build();
