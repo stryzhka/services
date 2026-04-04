@@ -155,11 +155,11 @@ func (m *MongoWordRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (m *MongoWordRepository) Confirm(ctx context.Context, id string) error {
+func (m *MongoWordRepository) Confirm(ctx context.Context, id, confirmedAt string) error {
 	coll := m.c.Database("words").Collection("words")
 
 	filter := bson.M{"_id": id}
-	update := bson.M{"$set": bson.M{"confirmed_status": "confirmed"}}
+	update := bson.M{"$set": bson.M{"confirmed_status": "confirmed", "confirmed_at": confirmedAt}}
 
 	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
 

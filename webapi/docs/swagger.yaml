@@ -20,6 +20,19 @@ definitions:
       transcription:
         type: string
     type: object
+  http.WordDtoUpdate:
+    properties:
+      category_id:
+        type: string
+      difficulty:
+        type: string
+      eng_text:
+        type: string
+      native_text:
+        type: string
+      transcription:
+        type: string
+    type: object
   models.Category:
     properties:
       id:
@@ -31,6 +44,8 @@ definitions:
   models.Word:
     properties:
       category_id:
+        type: string
+      confirmed_at:
         type: string
       confirmed_status:
         type: string
@@ -249,7 +264,7 @@ paths:
         name: word
         required: true
         schema:
-          $ref: '#/definitions/http.WordDtoIn'
+          $ref: '#/definitions/http.WordDtoUpdate'
       produces:
       - application/json
       responses:

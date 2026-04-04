@@ -29,6 +29,14 @@ type WordDtoIn struct {
 	ConfirmedUserId string `json:"confirmed_user_id"`
 }
 
+type WordDtoUpdate struct {
+	EngText       string `json:"eng_text"`
+	NativeText    string `json:"native_text"`
+	Transcription string `json:"transcription"`
+	Difficulty    string `json:"difficulty"`
+	CategoryId    string `json:"category_id"`
+}
+
 //type WordDtoOut struct {
 //	EngText         string `json:"eng_text"`
 //	NativeText      string `json:"native_text"`
@@ -41,6 +49,13 @@ type WordDtoIn struct {
 
 func validateDto(dto *WordDtoIn) error {
 	if strings.TrimSpace(dto.EngText) == "" || strings.TrimSpace(dto.NativeText) == "" || strings.TrimSpace(dto.Transcription) == "" || strings.TrimSpace(dto.Difficulty) == "" || strings.TrimSpace(dto.ConfirmedUserId) == "" {
+		return word.ErrValidation
+	}
+	return nil
+}
+
+func validateUpdate(dto *WordDtoUpdate) error {
+	if strings.TrimSpace(dto.EngText) == "" || strings.TrimSpace(dto.NativeText) == "" || strings.TrimSpace(dto.Transcription) == "" || strings.TrimSpace(dto.Difficulty) == "" {
 		return word.ErrValidation
 	}
 	return nil
@@ -180,16 +195,16 @@ func (h *Handler) Delete(w http.ResponseWriter, req *http.Request) {
 // @Summary Update word by id
 // @Tags word
 // @Param id path string true "word id"
-// @Param word body WordDtoIn required "word"
+// @Param word body WordDtoUpdate required "word"
 // @Success 200 {object} models.Word
-// @Accepts json WordDtoIn
+// @Accepts json WordDtoUpdate
 // @Produce json
 // @Failure 422
 // @Router /api/words/{id} [put]
 func (h *Handler) Update(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id := vars["id"]
-	updatedWord := &WordDtoIn{}
+	updatedWord := &WordDtoUpdate{}
 	err := json.NewDecoder(req.Body).Decode(updatedWord)
 	w.Header().Set("Content-Type", "application/json")
 	if err != nil {
@@ -198,7 +213,8 @@ func (h *Handler) Update(w http.ResponseWriter, req *http.Request) {
 		w.Write(msg)
 		return
 	}
-	err = validateDto(updatedWord)
+
+	err = validateUpdate(updatedWord)
 	if err != nil {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		msg, _ := json.Marshal(errorMessage{err.Error()})
@@ -215,6 +231,7 @@ func (h *Handler) Update(w http.ResponseWriter, req *http.Request) {
 	}
 	word, err := h.s.UpdateById(req.Context(), id, newWord)
 	if err != nil {
+		log.Println("service error")
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		msg, _ := json.Marshal(errorMessage{err.Error()})
 		w.Write(msg)

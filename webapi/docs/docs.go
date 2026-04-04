@@ -295,7 +295,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/http.WordDtoIn"
+                            "$ref": "#/definitions/http.WordDtoUpdate"
                         }
                     }
                 ],
@@ -371,6 +371,26 @@ const docTemplate = `{
                 }
             }
         },
+        "http.WordDtoUpdate": {
+            "type": "object",
+            "properties": {
+                "category_id": {
+                    "type": "string"
+                },
+                "difficulty": {
+                    "type": "string"
+                },
+                "eng_text": {
+                    "type": "string"
+                },
+                "native_text": {
+                    "type": "string"
+                },
+                "transcription": {
+                    "type": "string"
+                }
+            }
+        },
         "models.Category": {
             "type": "object",
             "properties": {
@@ -387,6 +407,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "category_id": {
+                    "type": "string"
+                },
+                "confirmed_at": {
                     "type": "string"
                 },
                 "confirmed_status": {

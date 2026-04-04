@@ -27,6 +27,13 @@ func validateWord(w models.Word) error {
 	return nil
 }
 
+func validateUpdate(w models.Word) error {
+	if len(w.EngText) == 0 || len(w.NativeText) == 0 || len(w.Difficulty) == 0 {
+		return word.ErrValidation
+	}
+	return nil
+}
+
 func (w *WordService) GetAll(ctx context.Context, filter word.WordFilter) []*models.Word {
 	return w.r.GetAll(ctx, filter)
 }
@@ -50,6 +57,7 @@ func (w *WordService) Create(ctx context.Context, engText, nativeText, transcrip
 		CategoryId:      categoryUuid.String(),
 		ConfirmedUserId: confirmedUserId,
 		ConfirmedStatus: "pending",
+		ConfirmedAt:     "",
 	}
 	err = validateWord(*_word)
 	if err != nil {
@@ -65,7 +73,7 @@ func (w *WordService) Create(ctx context.Context, engText, nativeText, transcrip
 }
 
 func (w *WordService) UpdateById(ctx context.Context, id string, newWord *models.Word) (*models.Word, error) {
-	err := validateWord(*newWord)
+	err := validateUpdate(*newWord)
 	if err != nil {
 		return nil, err
 	}
@@ -82,6 +90,6 @@ func (w *WordService) Delete(ctx context.Context, id string) error {
 	return w.r.Delete(ctx, id)
 }
 
-func (w *WordService) ConfirmWord(ctx context.Context, id string) error {
-	return w.r.Confirm(ctx, id)
+func (w *WordService) ConfirmWord(ctx context.Context, id, confirmedAt string) error {
+	return w.r.Confirm(ctx, id, confirmedAt)
 }

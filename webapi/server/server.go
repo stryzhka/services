@@ -154,7 +154,7 @@ func (a *App) Run(port string) error {
 			msgCtx, msgCancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer msgCancel()
 
-			err := a.wordService.ConfirmWord(msgCtx, msg.ObjectId)
+			err := a.wordService.ConfirmWord(msgCtx, msg.ObjectId, msg.ConfirmedAt.String())
 			if err != nil {
 				log.Printf("ConfirmWord error for objectId %s: %v", msg.ObjectId, err)
 			}
