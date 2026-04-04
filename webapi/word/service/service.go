@@ -55,7 +55,7 @@ func (w *WordService) Create(ctx context.Context, engText, nativeText, transcrip
 	if err != nil {
 		return nil, err
 	}
-	e := &word.WordConfirmMessage{UserId: _word.ConfirmedUserId}
+	e := &word.WordConfirmMessage{UserId: _word.ConfirmedUserId, ObjectId: _word.Id}
 	err = w.eventPublisher.Publish(ctx, "obj-to-users", _word.Id, e)
 	if err != nil {
 		return nil, err
