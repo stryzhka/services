@@ -9,14 +9,25 @@ import (
 )
 
 type WordService struct {
-	r word.Repository
+	r              word.Repository
+	eventPublisher word.EventPublisher
 }
 
-func NewWordService(r word.Repository) *WordService {
-	return &WordService{r: r}
+func NewWordService(r word.Repository, e word.EventPublisher) *WordService {
+	return &WordService{
+		r:              r,
+		eventPublisher: e,
+	}
 }
 
 func validateWord(w models.Word) error {
+	if len(w.EngText) == 0 || len(w.NativeText) == 0 || len(w.Difficulty) == 0 || len(w.ConfirmedUserId) == 0 {
+		return word.ErrValidation
+	}
+	return nil
+}
+
+func validateUpdate(w models.Word) error {
 	if len(w.EngText) == 0 || len(w.NativeText) == 0 || len(w.Difficulty) == 0 {
 		return word.ErrValidation
 	}
@@ -31,29 +42,38 @@ func (w *WordService) GetById(ctx context.Context, id string) *models.Word {
 	return w.r.GetById(ctx, id)
 }
 
-func (w *WordService) Create(ctx context.Context, engText, nativeText, transcription, difficulty, categoryId string) (*models.Word, error) {
+func (w *WordService) Create(ctx context.Context, engText, nativeText, transcription, difficulty, categoryId, confirmedUserId string) (*models.Word, error) {
 
 	categoryUuid, err := uuid.Parse(categoryId)
 	if err != nil {
 		categoryUuid = uuid.Nil
 	}
-	word := &models.Word{
-		Id:            uuid.New().String(),
-		EngText:       engText,
-		NativeText:    nativeText,
-		Transcription: transcription,
-		Difficulty:    difficulty,
-		CategoryId:    categoryUuid.String(),
+	_word := &models.Word{
+		Id:              uuid.New().String(),
+		EngText:         engText,
+		NativeText:      nativeText,
+		Transcription:   transcription,
+		Difficulty:      difficulty,
+		CategoryId:      categoryUuid.String(),
+		ConfirmedUserId: confirmedUserId,
+		ConfirmedStatus: "pending",
+		ConfirmedAt:     "",
 	}
-	err = validateWord(*word)
+	err = validateWord(*_word)
 	if err != nil {
 		return nil, err
 	}
-	return w.r.Create(ctx, word)
+	ret, err := w.r.Create(ctx, _word)
+	if err != nil {
+		return ret, err
+	}
+	e := &word.WordConfirmMessage{UserId: _word.ConfirmedUserId, ObjectId: _word.Id}
+	err = w.eventPublisher.Publish(ctx, "obj-to-users", _word.Id, e)
+	return ret, err
 }
 
 func (w *WordService) UpdateById(ctx context.Context, id string, newWord *models.Word) (*models.Word, error) {
-	err := validateWord(*newWord)
+	err := validateUpdate(*newWord)
 	if err != nil {
 		return nil, err
 	}
@@ -68,4 +88,8 @@ func (w *WordService) Delete(ctx context.Context, id string) error {
 		return word.ErrValidation
 	}
 	return w.r.Delete(ctx, id)
+}
+
+func (w *WordService) ConfirmWord(ctx context.Context, id, confirmedAt string) error {
+	return w.r.Confirm(ctx, id, confirmedAt)
 }

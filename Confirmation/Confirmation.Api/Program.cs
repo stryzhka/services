@@ -1,7 +1,10 @@
 // using Confirmation.Api.Extensions;
 using Confirmation.Application;
+using Confirmation.Application.Services;
 using Confirmation.Application.Services.Interfaces;
 using Confirmation.Infrastructure;
+using Confirmation.Infrastructure.Messaging;
+using Confirmation.Infrastructure.Worker;
 // using Confirmation.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
 var builder = WebApplication.CreateBuilder(args);
@@ -9,9 +12,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
+
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApplication(builder.Configuration);
-
+builder.Services.AddScoped<IConfirmService, ConfirmService>();
+builder.Services.AddSingleton<KafkaConsumerHandler>();
+builder.Services.AddHostedService<KafkaWorkerService>();
+builder.Services.AddSingleton<IEventPublisher, KafkaEventPublisher>();
 // builder.Services.AddOpenApi();
 
 var app = builder.Build();
