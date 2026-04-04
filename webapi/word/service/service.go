@@ -81,3 +81,7 @@ func (w *WordService) Delete(ctx context.Context, id string) error {
 	}
 	return w.r.Delete(ctx, id)
 }
+
+func (w *WordService) ConfirmWord(ctx context.Context, id string) error {
+	return w.r.Confirm(ctx, id)
+}

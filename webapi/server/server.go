@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"net/http"
 	"os"
@@ -62,11 +63,12 @@ func initRedis() (*redis.Client, error) {
 	return client, nil
 }
 
-func initKafka() *kafka.Producer {
+func initKafka() (*kafka.Producer, *kafka.Consumer) {
 	connString := os.Getenv("kafka_uri")
+	log.Println("kafka_uri", connString)
 	p := kafka.NewProducer([]string{connString}, "obj-to-users")
-
-	return p
+	c := kafka.NewConsumer([]string{connString}, "users-to-obj")
+	return p, c
 }
 
 type App struct {
@@ -75,14 +77,15 @@ type App struct {
 	server          *http.Server
 	mongoClient     *mongo.Client
 	redisClient     *redis.Client
-	kafkaClient     *kafka.Producer
+	kafkaProducer   *kafka.Producer
+	kafkaConsumer   *kafka.Consumer
 }
 
 func NewApp() *App {
 	//db := initWordDb()
 	client, err := initMongo()
 	redisClient, _ := initRedis()
-	kafkaClient := initKafka()
+	kafkaProducer, kafkaConsumer := initKafka()
 	if err != nil {
 		panic(err)
 	}
@@ -90,7 +93,7 @@ func NewApp() *App {
 	//wordRepository := wordrepo.NewInmemRepository(db)
 	redis := cache.NewRedisWordCache(redisClient)
 	wordRepository := wordrepo.NewMongoWordRepository(client, redis)
-	wordService := wordsvc.NewWordService(wordRepository, kafkaClient)
+	wordService := wordsvc.NewWordService(wordRepository, kafkaProducer)
 
 	categoryRepository := categoryrepo.NewMongoCategoryRepository(client)
 	categoryService := service.NewCategoryService(categoryRepository)
@@ -98,6 +101,7 @@ func NewApp() *App {
 		wordService:     wordService,
 		mongoClient:     client,
 		categoryService: categoryService,
+		kafkaConsumer:   kafkaConsumer,
 	}
 }
 
@@ -134,6 +138,33 @@ func (a *App) Run(port string) error {
 			log.Fatalf("Server error: %s", err.Error())
 		}
 	}()
+	// контекст для консумера — живёт всё время работы приложения
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		if err := a.kafkaConsumer.Consume(ctx, func(key, value []byte) error {
+			var msg wordpkg.WordConfirmedSuccessMessage
+			if err := json.Unmarshal(value, &msg); err != nil {
+				return err
+			}
+			log.Println("msg: ", msg.ObjectId)
+
+			// отдельный контекст для каждого сообщения с таймаутом
+			msgCtx, msgCancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer msgCancel()
+
+			err := a.wordService.ConfirmWord(msgCtx, msg.ObjectId)
+			if err != nil {
+				log.Printf("ConfirmWord error for objectId %s: %v", msg.ObjectId, err)
+			}
+			return err
+		}); err != nil {
+			log.Printf("consumer error: %s", err.Error())
+			cancel()
+		}
+	}()
+
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, os.Interrupt)
 	<-quit
@@ -151,7 +182,7 @@ func (a *App) Shutdown() error {
 	if err := a.redisClient.Close(); err != nil {
 		log.Println("redis disconnect error:", err)
 	}
-	if err := a.kafkaClient.Close(); err != nil {
+	if err := a.kafkaProducer.Close(); err != nil {
 		log.Println("kafka disconnect error:", err)
 	}
 

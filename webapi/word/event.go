@@ -1,6 +1,9 @@
 package word
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 type WordConfirmMessage struct {
 	UserId   string `bson:"user_id" json:"user_id"`
@@ -8,6 +11,8 @@ type WordConfirmMessage struct {
 }
 
 type WordConfirmedSuccessMessage struct {
+	ObjectId    string    `bson:"object_id" json:"object_id"`
+	ConfirmedAt time.Time `bson:"confirmed_at" json:"confirmed_at"`
 }
 
 type EventPublisher interface {

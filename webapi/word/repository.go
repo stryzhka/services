@@ -11,4 +11,5 @@ type Repository interface {
 	Create(ctx context.Context, word *models.Word) (*models.Word, error)
 	UpdateById(ctx context.Context, id string, word *models.Word) (*models.Word, error)
 	Delete(ctx context.Context, id string) error
+	Confirm(ctx context.Context, id string) error
 }

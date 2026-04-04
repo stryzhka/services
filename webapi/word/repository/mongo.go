@@ -155,6 +155,34 @@ func (m *MongoWordRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
+func (m *MongoWordRepository) Confirm(ctx context.Context, id string) error {
+	coll := m.c.Database("words").Collection("words")
+
+	filter := bson.M{"_id": id}
+	update := bson.M{"$set": bson.M{"confirmed_status": "confirmed"}}
+
+	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
+
+	var word models.Word
+	err := coll.FindOneAndUpdate(ctx, filter, update, opts).Decode(&word)
+	if err != nil {
+		return err
+	}
+
+	key := fmt.Sprintf("word:%s", id)
+	_, err = m.redis.Set(ctx, key, 20*time.Second, &word)
+	if err != nil {
+		log.Println(err)
+	}
+
+	err = m.redis.InvalidateAll(ctx)
+	if err != nil {
+		log.Println(err)
+	}
+
+	return nil
+}
+
 func NewMongoWordRepository(c *mongo.Client, redis word.Cache) *MongoWordRepository {
 	return &MongoWordRepository{
 		c:     c,
