@@ -55,12 +55,13 @@ func (w *WordService) Create(ctx context.Context, engText, nativeText, transcrip
 	if err != nil {
 		return nil, err
 	}
+	ret, err := w.r.Create(ctx, _word)
+	if err != nil {
+		return ret, err
+	}
 	e := &word.WordConfirmMessage{UserId: _word.ConfirmedUserId, ObjectId: _word.Id}
 	err = w.eventPublisher.Publish(ctx, "obj-to-users", _word.Id, e)
-	if err != nil {
-		return nil, err
-	}
-	return w.r.Create(ctx, _word)
+	return ret, err
 }
 
 func (w *WordService) UpdateById(ctx context.Context, id string, newWord *models.Word) (*models.Word, error) {

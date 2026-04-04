@@ -36,4 +36,19 @@ public class MongoUserRepository(MongoClient client) : IUserRepository
         Console.WriteLine(user);
         return user;
     }
+
+    public async Task<User?> IncrementConfirmedObjects(Guid id)
+    {
+        var collection = _client.GetDatabase("words").GetCollection<User>("users");
+    
+        var filter = Builders<User>.Filter.Eq("_id", id);
+        var update = Builders<User>.Update.Inc(u => u.ConfirmedObjects, 1);
+    
+        var options = new FindOneAndUpdateOptions<User>
+        {
+            ReturnDocument = ReturnDocument.After 
+        };
+    
+        return await collection.FindOneAndUpdateAsync(filter, update, options);
+    }
 }
