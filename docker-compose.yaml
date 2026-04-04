@@ -1,4 +1,17 @@
 services:
+  user-service:
+    build:
+      context: ./Confirmation
+      dockerfile: Confirmation.Api/Dockerfile
+    ports:
+      - "5016:5016"
+    networks:
+      - app
+    environment:
+      - ConnectionStrings__MongoDB=mongodb://admin:admin@mongodb:27017/test?authSource=admin
+      - Kafka__BootstrapServers=kafka:29092
+      - Kafka__GroupId=obj-to-users
+      - ASPNETCORE_URLS=http://+:5016
   objects-service:
     build:
       context: ./webapi
