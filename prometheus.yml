@@ -1,0 +1,13 @@
+global:
+  scrape_interval:     3s
+  evaluation_interval: 3s
+
+rule_files:
+# - "first.rules"
+# - "second.rules"
+
+scrape_configs:
+  - job_name: prometheus
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['objects-service:8080']
