@@ -59,6 +59,20 @@ var (
 		},
 		[]string{"operation"},
 	)
+	kafkaProduced = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "kafka_messages_produced_total",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"topic"},
+	)
+	kafkaConsumed = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "kafka_messages_consumed_total",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"topic"},
+	)
 )
 
 type statusRecorder struct {
@@ -110,8 +124,8 @@ func initRedis() (*redis.Client, error) {
 func initKafka() (*kafka.Producer, *kafka.Consumer) {
 	connString := os.Getenv("kafka_uri")
 	log.Println("kafka_uri", connString)
-	p := kafka.NewProducer([]string{connString}, "obj-to-users")
-	c := kafka.NewConsumer([]string{connString}, "users-to-obj")
+	p := kafka.NewProducer([]string{connString}, "obj-to-users", kafkaProduced)
+	c := kafka.NewConsumer([]string{connString}, "users-to-obj", kafkaConsumed)
 	return p, c
 }
 
@@ -182,7 +196,9 @@ func (a *App) Run(port string) error {
 		httpRequestsTotal,
 		httpRequestDuration,
 		httpRequestsInFlight,
-		mongoQueryDuration)
+		mongoQueryDuration,
+		kafkaProduced,
+		kafkaConsumed)
 	router.Use(metricsMiddleware)
 	router.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
 	// word routes
