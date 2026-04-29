@@ -7,6 +7,8 @@ using Confirmation.Infrastructure.Messaging;
 using Confirmation.Infrastructure.Worker;
 // using Confirmation.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
+using Prometheus;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
@@ -40,6 +42,7 @@ app.UseHttpsRedirection();
 // app.UseAuthentication();
 // app.UseAuthorization();
 app.MapControllers();
+app.MapMetrics();
 
 app.Run();
 
