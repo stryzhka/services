@@ -6,14 +6,16 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/segmentio/kafka-go"
 )
 
 type Producer struct {
 	writer *kafka.Writer
+	metric *prometheus.HistogramVec
 }
 
-func NewProducer(brokers []string, topic string) *Producer {
+func NewProducer(brokers []string, topic string, metric *prometheus.HistogramVec) *Producer {
 
 	writer := &kafka.Writer{
 		Addr:         kafka.TCP(brokers...),
@@ -22,7 +24,7 @@ func NewProducer(brokers []string, topic string) *Producer {
 		BatchTimeout: 10 * time.Millisecond,
 		RequiredAcks: kafka.RequireOne,
 	}
-	return &Producer{writer: writer}
+	return &Producer{writer: writer, metric: metric}
 }
 
 func (p *Producer) Publish(ctx context.Context, topic, key string, payload any) error {
@@ -30,7 +32,15 @@ func (p *Producer) Publish(ctx context.Context, topic, key string, payload any) 
 	if err != nil {
 		return fmt.Errorf("marshal payload: %w", err)
 	}
-
+	timer := prometheus.NewTimer(p.metric.WithLabelValues(topic))
+	err = p.writer.WriteMessages(ctx, kafka.Message{
+		Key:   []byte(key),
+		Value: data,
+	})
+	timer.ObserveDuration()
+	if err != nil {
+		return fmt.Errorf("write messages: %w", err)
+	}
 	return p.writer.WriteMessages(ctx, kafka.Message{
 		Key:   []byte(key),
 		Value: data,

@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+using System.Diagnostics;
+using System.Text.Json;
 using Confirmation.Application.Services.Interfaces;
 using Confluent.Kafka;
 using Microsoft.Extensions.Configuration;
@@ -21,11 +22,19 @@ public class KafkaEventPublisher : IEventPublisher, IDisposable
     public async Task PublishAsync<T>(string topic, T message, CancellationToken ct)
     {
         var json = JsonSerializer.Serialize(message);
-        await _producer.ProduceAsync(topic, new Message<string, string>
+        var sw = Stopwatch.StartNew();
+        try
         {
-            Key = Guid.NewGuid().ToString(),
-            Value = json
-        }, ct);
+            await _producer.ProduceAsync(topic, new Message<string, string>
+            {
+                Key = Guid.NewGuid().ToString(),
+                Value = json
+            }, ct);
+        }
+        finally
+        {
+            KafkaMessagingMetrics.ObserveProducerLatency(topic, sw.Elapsed.TotalSeconds);
+        }
     }
 
     public void Dispose() => _producer.Dispose();

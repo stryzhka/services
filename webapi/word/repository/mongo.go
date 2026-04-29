@@ -9,17 +9,20 @@ import (
 	"webapi/models"
 	"webapi/word"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type MongoWordRepository struct {
-	c     *mongo.Client
-	redis word.Cache
+	c             *mongo.Client
+	redis         word.Cache
+	queryDuration *prometheus.HistogramVec
 }
 
 func (m *MongoWordRepository) GetAll(ctx context.Context, filter word.WordFilter) []*models.Word {
+	defer prometheus.NewTimer(m.queryDuration.WithLabelValues("find_all")).ObserveDuration()
 	var key string
 	key = fmt.Sprintf("word:%s", filter.ToBSON().String())
 	cacheRes, err := m.redis.GetMany(ctx, key)
@@ -79,6 +82,7 @@ func (m *MongoWordRepository) GetAll(ctx context.Context, filter word.WordFilter
 }
 
 func (m *MongoWordRepository) GetById(ctx context.Context, id string) *models.Word {
+	defer prometheus.NewTimer(m.queryDuration.WithLabelValues("find_one")).ObserveDuration()
 	key := fmt.Sprintf("word:%s", id)
 	cacheRes, err := m.redis.GetOne(ctx, key)
 	if err != nil {
@@ -107,6 +111,7 @@ func (m *MongoWordRepository) GetById(ctx context.Context, id string) *models.Wo
 }
 
 func (m *MongoWordRepository) Create(ctx context.Context, word *models.Word) (*models.Word, error) {
+	defer prometheus.NewTimer(m.queryDuration.WithLabelValues("insert")).ObserveDuration()
 	coll := m.c.Database("words").Collection("words")
 	_, err := coll.InsertOne(ctx, word)
 	if err != nil {
@@ -120,6 +125,7 @@ func (m *MongoWordRepository) Create(ctx context.Context, word *models.Word) (*m
 }
 
 func (m *MongoWordRepository) UpdateById(ctx context.Context, id string, word *models.Word) (*models.Word, error) {
+	defer prometheus.NewTimer(m.queryDuration.WithLabelValues("update")).ObserveDuration()
 	coll := m.c.Database("words").Collection("words")
 	filter := bson.M{"_id": id}
 	update := bson.M{"$set": word}
@@ -140,6 +146,7 @@ func (m *MongoWordRepository) UpdateById(ctx context.Context, id string, word *m
 }
 
 func (m *MongoWordRepository) Delete(ctx context.Context, id string) error {
+	defer prometheus.NewTimer(m.queryDuration.WithLabelValues("delete")).ObserveDuration()
 	coll := m.c.Database("words").Collection("words")
 	result, err := coll.DeleteOne(ctx, bson.D{{"_id", id}})
 	if err != nil {
@@ -156,6 +163,7 @@ func (m *MongoWordRepository) Delete(ctx context.Context, id string) error {
 }
 
 func (m *MongoWordRepository) Confirm(ctx context.Context, id, confirmedAt string) error {
+	defer prometheus.NewTimer(m.queryDuration.WithLabelValues("confirm")).ObserveDuration()
 	coll := m.c.Database("words").Collection("words")
 
 	filter := bson.M{"_id": id}
@@ -183,9 +191,10 @@ func (m *MongoWordRepository) Confirm(ctx context.Context, id, confirmedAt strin
 	return nil
 }
 
-func NewMongoWordRepository(c *mongo.Client, redis word.Cache) *MongoWordRepository {
+func NewMongoWordRepository(c *mongo.Client, redis word.Cache, queryDuration *prometheus.HistogramVec) *MongoWordRepository {
 	return &MongoWordRepository{
-		c:     c,
-		redis: redis,
+		c:             c,
+		redis:         redis,
+		queryDuration: queryDuration,
 	}
 }

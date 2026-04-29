@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+using System.Diagnostics;
+using System.Text.Json;
 using Confirmation.Application.Services.Interfaces;
 using Confirmation.Core.Events;
 using Confluent.Kafka;
@@ -32,11 +33,19 @@ public class KafkaConsumerHandler
         while (!ct.IsCancellationRequested)
         {
             var result = _consumer.Consume(ct);
-            var @event = JsonSerializer.Deserialize<GotConfirmRequestEvent>(result.Message.Value);
-            using var scope = _scopeFactory.CreateScope();
-            var confirmService = scope.ServiceProvider.GetRequiredService<IConfirmService>();
-            await confirmService.ConfirmObjectAsync(@event, ct);
-            _consumer.Commit(result);
+            var sw = Stopwatch.StartNew();
+            try
+            {
+                var @event = JsonSerializer.Deserialize<GotConfirmRequestEvent>(result.Message.Value);
+                using var scope = _scopeFactory.CreateScope();
+                var confirmService = scope.ServiceProvider.GetRequiredService<IConfirmService>();
+                await confirmService.ConfirmObjectAsync(@event, ct);
+                _consumer.Commit(result);
+            }
+            finally
+            {
+                KafkaMessagingMetrics.ObserveConsumerLatency(result.Topic, sw.Elapsed.TotalSeconds);
+            }
         }
     }
 }

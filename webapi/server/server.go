@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"time"
 	"webapi/category"
 	categoryrepo "webapi/category/repository"
@@ -20,12 +21,69 @@ import (
 	wordhttp "webapi/word/transport/http"
 
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
 	httpSwagger "github.com/swaggo/http-swagger"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
+
+var (
+	httpRequestsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "http_requests_total",
+			Help: "Total number of HTTP requests",
+		},
+		[]string{"method", "path", "status"},
+	)
+	httpRequestDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "http_request_duration_seconds",
+			Help:    "HTTP request duration in seconds",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"method", "path"},
+	)
+	httpRequestsInFlight = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "http_requests_in_flight",
+			Help: "Requests currently being processed",
+		},
+	)
+	mongoQueryDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "mongo_query_duration_seconds",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"operation"},
+	)
+	kafkaProduced = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "kafka_messages_produced_total",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"topic"},
+	)
+	kafkaConsumed = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "kafka_messages_consumed_total",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"topic"},
+	)
+)
+
+type statusRecorder struct {
+	http.ResponseWriter
+	status int
+}
+
+func (r *statusRecorder) WriteHeader(status int) {
+	r.status = status
+	r.ResponseWriter.WriteHeader(status)
+}
 
 func initMongo() (*mongo.Client, error) {
 	connectionString := os.Getenv("MONGODB_URI")
@@ -66,8 +124,8 @@ func initRedis() (*redis.Client, error) {
 func initKafka() (*kafka.Producer, *kafka.Consumer) {
 	connString := os.Getenv("kafka_uri")
 	log.Println("kafka_uri", connString)
-	p := kafka.NewProducer([]string{connString}, "obj-to-users")
-	c := kafka.NewConsumer([]string{connString}, "users-to-obj")
+	p := kafka.NewProducer([]string{connString}, "obj-to-users", kafkaProduced)
+	c := kafka.NewConsumer([]string{connString}, "users-to-obj", kafkaConsumed)
 	return p, c
 }
 
@@ -92,7 +150,7 @@ func NewApp() *App {
 	//insertTestValues(db, 3)
 	//wordRepository := wordrepo.NewInmemRepository(db)
 	redis := cache.NewRedisWordCache(redisClient)
-	wordRepository := wordrepo.NewMongoWordRepository(client, redis)
+	wordRepository := wordrepo.NewMongoWordRepository(client, redis, mongoQueryDuration)
 	wordService := wordsvc.NewWordService(wordRepository, kafkaProducer)
 
 	categoryRepository := categoryrepo.NewMongoCategoryRepository(client)
@@ -105,11 +163,44 @@ func NewApp() *App {
 	}
 }
 
+func metricsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/metrics" || r.URL.Path == "/swagger" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		path := r.URL.Path
+		if route := mux.CurrentRoute(r); route != nil {
+			if tmpl, err := route.GetPathTemplate(); err == nil {
+				path = tmpl
+			}
+		}
+		rec := &statusRecorder{ResponseWriter: w, status: 200}
+		httpRequestsInFlight.Inc()
+		timer := prometheus.NewTimer(httpRequestDuration.WithLabelValues(r.Method, path))
+		next.ServeHTTP(rec, r)
+		timer.ObserveDuration()
+		httpRequestsInFlight.Dec()
+		httpRequestsTotal.WithLabelValues(r.Method, path, strconv.Itoa(rec.status)).Inc()
+	})
+}
+
 func (a *App) Run(port string) error {
 	wordHandler := wordhttp.NewHandler(a.wordService)
 	categoryHandler := http2.NewHandler(a.categoryService)
 	router := mux.NewRouter()
-
+	reg := prometheus.NewRegistry()
+	reg.MustRegister(
+		prometheus.NewGoCollector(),
+		prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}),
+		httpRequestsTotal,
+		httpRequestDuration,
+		httpRequestsInFlight,
+		mongoQueryDuration,
+		kafkaProduced,
+		kafkaConsumed)
+	router.Use(metricsMiddleware)
+	router.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
 	// word routes
 	router.HandleFunc("/api/words/", wordHandler.GetAll).Methods("GET")
 	router.HandleFunc("/api/words/{id}", wordHandler.GetById).Methods("GET")
@@ -138,7 +229,6 @@ func (a *App) Run(port string) error {
 			log.Fatalf("Server error: %s", err.Error())
 		}
 	}()
-	// контекст для консумера — живёт всё время работы приложения
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -148,9 +238,7 @@ func (a *App) Run(port string) error {
 			if err := json.Unmarshal(value, &msg); err != nil {
 				return err
 			}
-			log.Println("msg: ", msg.ObjectId)
 
-			// отдельный контекст для каждого сообщения с таймаутом
 			msgCtx, msgCancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer msgCancel()
 
