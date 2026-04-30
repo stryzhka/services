@@ -23,6 +23,7 @@ services:
     networks:
       - app
   user-service:
+    container_name: user-service
     build:
       context: ./Confirmation
       dockerfile: Confirmation.Api/Dockerfile
@@ -36,6 +37,7 @@ services:
       - Kafka__GroupId=obj-to-users
       - ASPNETCORE_URLS=http://+:5016
   objects-service:
+    container_name: objects-service
     build:
       context: ./webapi
       dockerfile: Dockerfile
