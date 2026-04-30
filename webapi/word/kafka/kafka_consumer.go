@@ -34,7 +34,7 @@ func (c *Consumer) Consume(ctx context.Context, handler func(key, value []byte) 
 			return err
 		}
 		log.Printf("got message: %s", string(msg.Value))
-		timer := prometheus.NewTimer(c.metric.WithLabelValues("consumed"))
+		timer := prometheus.NewTimer(c.metric.WithLabelValues("users-to-obj"))
 		err = handler(msg.Key, msg.Value)
 		timer.ObserveDuration()
 
