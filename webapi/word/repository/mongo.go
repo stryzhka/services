@@ -131,11 +131,11 @@ func (m *MongoWordRepository) UpdateById(ctx context.Context, id string, word *m
 	update := bson.M{"$set": word}
 	_, err := coll.UpdateOne(ctx, filter, update)
 	key := fmt.Sprintf("word:%s", id)
-	_, err = m.redis.Set(ctx, key, 20*time.Second, word)
+	err = m.redis.InvalidateAll(ctx)
 	if err != nil {
 		log.Println(err)
 	}
-	err = m.redis.InvalidateAll(ctx)
+	_, err = m.redis.Set(ctx, key, 20*time.Second, word)
 	if err != nil {
 		log.Println(err)
 	}
@@ -177,13 +177,12 @@ func (m *MongoWordRepository) Confirm(ctx context.Context, id, confirmedAt strin
 		return err
 	}
 
-	key := fmt.Sprintf("word:%s", id)
-	_, err = m.redis.Set(ctx, key, 20*time.Second, &word)
+	err = m.redis.InvalidateAll(ctx)
 	if err != nil {
 		log.Println(err)
 	}
-
-	err = m.redis.InvalidateAll(ctx)
+	key := fmt.Sprintf("word:%s", id)
+	_, err = m.redis.Set(ctx, key, 20*time.Second, &word)
 	if err != nil {
 		log.Println(err)
 	}
