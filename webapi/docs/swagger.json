@@ -30,6 +30,11 @@
                 }
             },
             "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -51,6 +56,9 @@
                 "responses": {
                     "201": {
                         "description": "Created"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
                     },
                     "422": {
                         "description": "Unprocessable Entity"
@@ -86,6 +94,11 @@
                 }
             },
             "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -118,12 +131,20 @@
                             "$ref": "#/definitions/models.Category"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
                     "422": {
                         "description": "Unprocessable Entity"
                     }
                 }
             },
             "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -143,6 +164,9 @@
                 "responses": {
                     "200": {
                         "description": "OK"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
                     },
                     "422": {
                         "description": "Unprocessable Entity"
@@ -211,6 +235,11 @@
                 }
             },
             "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -232,6 +261,9 @@
                 "responses": {
                     "201": {
                         "description": "Created"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
                     },
                     "422": {
                         "description": "Unprocessable Entity"
@@ -267,6 +299,11 @@
                 }
             },
             "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -299,12 +336,20 @@
                             "$ref": "#/definitions/models.Word"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
                     "422": {
                         "description": "Unprocessable Entity"
                     }
                 }
             },
             "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -324,6 +369,9 @@
                 "responses": {
                     "200": {
                         "description": "OK"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
                     },
                     "422": {
                         "description": "Unprocessable Entity"
@@ -427,6 +475,14 @@
                     "type": "string"
                 }
             }
+        }
+    },
+    "securityDefinitions": {
+        "ApiKeyAuth": {
+            "description": "Type \"Bearer {token}\"",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }

@@ -1,54 +1,41 @@
-﻿using Confirmation.Application.Repositories;
+using Confirmation.Application.Repositories;
 using Confirmation.Core.Models;
-using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace Confirmation.Infrastructure.Repositories;
 
-public class MongoUserRepository(MongoClient client) : IUserRepository
+public class MongoUserRepository : IUserRepository
 {
-    private readonly MongoClient _client = client;
-    public async Task CreateAsync(User user)
-    {
-        var collection = _client.GetDatabase("words").GetCollection<BsonDocument>("users");
-        await collection.InsertOneAsync(user.ToBsonDocument());
-        
-    }
+    private readonly IMongoCollection<User> _collection;
 
-    public async Task<User> GetByIdAsync(Guid id)
+    public MongoUserRepository(MongoClient client)
     {
-        var collection = _client.GetDatabase("words").GetCollection<User>("users");
-        var filter = Builders<User>.Filter.Eq("_id", id.ToString());
-    
-        var user = await collection.Find(filter).FirstOrDefaultAsync();
-        return user;
-    }
-    
-    public async Task<User> VerifyUser(string name, string password)
-    {
-        var collection = _client.GetDatabase("words").GetCollection<User>("users");
-        
-        var filter = Builders<User>.Filter.And(
-                Builders<User>.Filter.Eq("name", name.ToString()),
-                Builders<User>.Filter.Eq("password", password.ToString())        
-            );
-        var user = await collection.Find(filter).FirstOrDefaultAsync();
-        Console.WriteLine(user);
-        return user;
+        _collection = client.GetDatabase("confirmation").GetCollection<User>("user_stats");
     }
 
     public async Task<User?> IncrementConfirmedObjects(Guid id)
     {
-        var collection = _client.GetDatabase("words").GetCollection<User>("users");
-    
-        var filter = Builders<User>.Filter.Eq("_id", id);
-        var update = Builders<User>.Update.Inc(u => u.ConfirmedObjects, 1);
-    
+        var filter = Builders<User>.Filter.Eq(u => u.Id, id);
+        var update = Builders<User>.Update
+            .SetOnInsert(u => u.Id, id)
+            .Inc(u => u.ConfirmedObjects, 1);
+
         var options = new FindOneAndUpdateOptions<User>
         {
-            ReturnDocument = ReturnDocument.After 
+            ReturnDocument = ReturnDocument.After,
+            IsUpsert = true,
         };
-    
-        return await collection.FindOneAndUpdateAsync(filter, update, options);
+
+        return await _collection.FindOneAndUpdateAsync(filter, update, options);
+    }
+
+    public async Task CreateIfNotExistsAsync(Guid id)
+    {
+        var filter = Builders<User>.Filter.Eq(u => u.Id, id);
+        var update = Builders<User>.Update
+            .SetOnInsert(u => u.Id, id)
+            .SetOnInsert(u => u.ConfirmedObjects, 0);
+
+        await _collection.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true });
     }
 }

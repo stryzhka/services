@@ -13,12 +13,12 @@ import (
 // @version 1.0
 // @description objects service: CRUD words and categories
 
-//-- @host localhost:8080
 // @BasePath /
 
-//-- @securityDefinitions.apikey ApiKeyAuth
-//-- @in header
-//-- @name Authorization
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer {token}"
 
 func main() {
 	err := godotenv.Load(".env")

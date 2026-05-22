@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"strconv"
 	"time"
+	"webapi/auth"
 	"webapi/category"
 	categoryrepo "webapi/category/repository"
 	"webapi/category/service"
@@ -88,15 +89,11 @@ func (r *statusRecorder) WriteHeader(status int) {
 func initMongo() (*mongo.Client, error) {
 	connectionString := os.Getenv("MONGODB_URI")
 	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
-	// Defines the options for the MongoDB client
 	opts := options.Client().ApplyURI(connectionString).SetServerAPIOptions(serverAPI)
-	// Creates a new client and connects to the server
 	client, err := mongo.Connect(opts)
 	if err != nil {
 		panic(err)
 	}
-
-	// Sends a ping to confirm a successful connection
 	var result bson.M
 	if err := client.Database("admin").RunCommand(context.TODO(), bson.D{{"ping", 1}}).Decode(&result); err != nil {
 		return nil, err
@@ -201,20 +198,34 @@ func (a *App) Run(port string) error {
 		kafkaConsumed)
 	router.Use(metricsMiddleware)
 	router.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
-	// word routes
-	router.HandleFunc("/api/words/", wordHandler.GetAll).Methods("GET")
-	router.HandleFunc("/api/words/{id}", wordHandler.GetById).Methods("GET")
-	router.HandleFunc("/api/words/", wordHandler.Create).Methods("POST")
-	router.HandleFunc("/api/words/{id}", wordHandler.Delete).Methods("DELETE")
-	router.HandleFunc("/api/words/{id}", wordHandler.Update).Methods("PUT")
 
-	// category routes
-	router.HandleFunc("/api/categories/", categoryHandler.GetAll).Methods("GET")
-	router.HandleFunc("/api/categories/{id}", categoryHandler.GetById).Methods("GET")
-	router.HandleFunc("/api/categories/", categoryHandler.Create).Methods("POST")
-	router.HandleFunc("/api/categories/{id}", categoryHandler.Delete).Methods("DELETE")
-	router.HandleFunc("/api/categories/{id}", categoryHandler.Update).Methods("PUT")
-	router.HandleFunc("/api/categories/{id}/words", categoryHandler.GetAllWords).Methods("GET")
+	authCfg := auth.Config{
+		Secret:   []byte(os.Getenv("JWT_KEY")),
+		Issuer:   getEnvDefault("JWT_ISSUER", "auth-service"),
+		Audience: getEnvDefault("JWT_AUDIENCE", "internal-api"),
+	}
+	if len(authCfg.Secret) == 0 {
+		log.Fatal("JWT_KEY env is required")
+	}
+	authMiddleware := auth.Middleware(authCfg)
+
+	// public reads
+	public := router.PathPrefix("/api").Subrouter()
+	public.HandleFunc("/words/", wordHandler.GetAll).Methods("GET")
+	public.HandleFunc("/words/{id}", wordHandler.GetById).Methods("GET")
+	public.HandleFunc("/categories/", categoryHandler.GetAll).Methods("GET")
+	public.HandleFunc("/categories/{id}", categoryHandler.GetById).Methods("GET")
+	public.HandleFunc("/categories/{id}/words", categoryHandler.GetAllWords).Methods("GET")
+
+	// protected mutations
+	protected := router.PathPrefix("/api").Subrouter()
+	protected.Use(authMiddleware)
+	protected.HandleFunc("/words/", wordHandler.Create).Methods("POST")
+	protected.HandleFunc("/words/{id}", wordHandler.Update).Methods("PUT")
+	protected.HandleFunc("/words/{id}", wordHandler.Delete).Methods("DELETE")
+	protected.HandleFunc("/categories/", categoryHandler.Create).Methods("POST")
+	protected.HandleFunc("/categories/{id}", categoryHandler.Update).Methods("PUT")
+	protected.HandleFunc("/categories/{id}", categoryHandler.Delete).Methods("DELETE")
 
 	router.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
 	a.server = &http.Server{
@@ -258,6 +269,13 @@ func (a *App) Run(port string) error {
 	<-quit
 	return a.Shutdown()
 
+}
+
+func getEnvDefault(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
 }
 
 func (a *App) Shutdown() error {

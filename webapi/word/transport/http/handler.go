@@ -124,10 +124,12 @@ func (h *Handler) GetById(w http.ResponseWriter, req *http.Request) {
 // Create godoc
 // @Summary Create new word
 // @Tags word
+// @Security ApiKeyAuth
 // @Param word body WordDtoIn required "word"
 // @Accepts json WordDtoIn
 // @Produce json
 // @Success 201
+// @Failure 401
 // @Failure 422
 // @Router /api/words/ [post]
 func (h *Handler) Create(w http.ResponseWriter, req *http.Request) {
@@ -169,9 +171,11 @@ func (h *Handler) Create(w http.ResponseWriter, req *http.Request) {
 // Delete godoc
 // @Summary Delete word by id
 // @Tags word
+// @Security ApiKeyAuth
 // @Param id path string true "word id"
 // @Produce json
 // @Success 200
+// @Failure 401
 // @Failure 422
 // @Router /api/words/{id} [delete]
 func (h *Handler) Delete(w http.ResponseWriter, req *http.Request) {
@@ -194,11 +198,13 @@ func (h *Handler) Delete(w http.ResponseWriter, req *http.Request) {
 // Update godoc
 // @Summary Update word by id
 // @Tags word
+// @Security ApiKeyAuth
 // @Param id path string true "word id"
 // @Param word body WordDtoUpdate required "word"
 // @Success 200 {object} models.Word
 // @Accepts json WordDtoUpdate
 // @Produce json
+// @Failure 401
 // @Failure 422
 // @Router /api/words/{id} [put]
 func (h *Handler) Update(w http.ResponseWriter, req *http.Request) {

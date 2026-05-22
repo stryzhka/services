@@ -99,10 +99,12 @@ func (h *Handler) GetAllWords(w http.ResponseWriter, req *http.Request) {
 // Create godoc
 // @Summary Create new category
 // @Tags category
+// @Security ApiKeyAuth
 // @Param category body CategoryDto required "category"
 // @Accepts json CategoryDto
 // @Produce json
 // @Success 201
+// @Failure 401
 // @Failure 422
 // @Router /api/categories/ [post]
 func (h *Handler) Create(w http.ResponseWriter, req *http.Request) {
@@ -143,9 +145,11 @@ func (h *Handler) Create(w http.ResponseWriter, req *http.Request) {
 // Delete godoc
 // @Summary Delete category by id
 // @Tags category
+// @Security ApiKeyAuth
 // @Param id path string true "category id"
 // @Produce json
 // @Success 200
+// @Failure 401
 // @Failure 422
 // @Router /api/categories/{id} [delete]
 func (h *Handler) Delete(w http.ResponseWriter, req *http.Request) {
@@ -167,11 +171,13 @@ func (h *Handler) Delete(w http.ResponseWriter, req *http.Request) {
 // Update godoc
 // @Summary Update category by id
 // @Tags category
+// @Security ApiKeyAuth
 // @Param id path string true "category id"
 // @Param category body CategoryDto required "category"
 // @Success 200 {object} models.Category
 // @Accepts json CategoryDto
 // @Produce json
+// @Failure 401
 // @Failure 422
 // @Router /api/categories/{id} [put]
 func (h *Handler) Update(w http.ResponseWriter, req *http.Request) {

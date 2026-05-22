@@ -22,13 +22,42 @@ services:
       - grafanadata:/var/lib/grafana
     networks:
       - app
+  gateway:
+    container_name: gateway
+    build:
+      context: ./Gateway
+      dockerfile: Gateway.Api/Dockerfile
+    ports:
+      - "8000:8000"
+    networks:
+      - app
+    environment:
+      - ASPNETCORE_URLS=http://+:8000
+    depends_on:
+      - auth-service
+      - user-service
+      - objects-service
+  auth-service:
+    container_name: auth-service
+    build:
+      context: ./Auth
+      dockerfile: Auth.Api/Dockerfile
+    networks:
+      - app
+    environment:
+      - ConnectionStrings__MongoDB=mongodb://admin:admin@mongodb:27017/?authSource=admin
+      - Kafka__BootstrapServers=kafka:29092
+      - Jwt__Key=${JWT_KEY:-dev-only-super-secret-do-not-use-in-production-please-change-it}
+      - Jwt__Issuer=auth-service
+      - Jwt__Audience=internal-api
+      - Jwt__ExpiresMinutes=60
+      - OpenApi__ServerUrl=http://localhost:8000
+      - ASPNETCORE_URLS=http://+:5018
   user-service:
     container_name: user-service
     build:
       context: ./Confirmation
       dockerfile: Confirmation.Api/Dockerfile
-    ports:
-      - "5016:5016"
     networks:
       - app
     environment:
@@ -53,6 +82,9 @@ services:
       - redis_uri=redis:6379
       - redis_password=redis
       - kafka_uri=kafka:29092
+      - JWT_KEY=${JWT_KEY:-dev-only-super-secret-do-not-use-in-production-please-change-it}
+      - JWT_ISSUER=auth-service
+      - JWT_AUDIENCE=internal-api
   mongodb:
     image: mongo
     container_name: mongodb
