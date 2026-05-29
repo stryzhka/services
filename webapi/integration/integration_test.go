@@ -1,5 +1,21 @@
 package integration
 
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"webapi/models"
+
+	"github.com/stretchr/testify/assert"
+
+	"net/http"
+	"strconv"
+	"testing"
+	dtos "webapi/word/transport/http"
+)
+
 //package integration
 //
 //import (
@@ -24,6 +40,74 @@ package integration
 //	"go.mongodb.org/mongo-driver/v2/mongo/options"
 //)
 //
+
+func TestQueueCreate(t *testing.T) {
+	client := &http.Client{}
+	for i := 0; i < 100; i++ {
+		word := &dtos.WordDtoIn{
+			EngText:         "test|" + strconv.Itoa(i),
+			NativeText:      "тест",
+			Transcription:   "@@@22!!",
+			Difficulty:      "easy",
+			CategoryId:      "d89eb250-29ff-4000-bc4d-72b39ebb4a5d",
+			ConfirmedUserId: "d89eb250-29ff-4000-bc4d-72b39ebb4a5d",
+		}
+		jsonWord, _ := json.Marshal(word)
+		req, err := http.NewRequest("POST", "http://localhost:8080/api/words/", bytes.NewReader(jsonWord))
+		assert.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		log.Printf("Отправка %d", i)
+		resp, err := client.Do(req)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer resp.Body.Close()
+		var msg []byte
+		msg, err = io.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Println(string(msg))
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusCreated, resp.StatusCode)
+	}
+}
+
+func TestQueueConfirmed(t *testing.T) {
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", "http://localhost:8080/api/words/", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var objects []*models.Word
+	var bodyBytes []byte
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	bodyBytes, err = io.ReadAll(resp.Body)
+	defer resp.Body.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = json.Unmarshal(bodyBytes, &objects)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for i := 0; i < 100; i++ {
+		expected := fmt.Sprintf("test|%d", i)
+		found := false
+		for _, obj := range objects {
+			if obj.EngText == expected && obj.ConfirmedStatus == "confirmed" {
+				found = true
+				break
+			}
+		}
+
+		assert.True(t, found, "not found")
+	}
+}
+
 //func TestAdd100(t *testing.T) {
 //	//client := &http.Client{}
 //	//for i := 0; i < 101; i++ {

@@ -47,7 +47,7 @@ services:
     environment:
       - ConnectionStrings__MongoDB=mongodb://admin:admin@mongodb:27017/?authSource=admin
       - Kafka__BootstrapServers=kafka:29092
-      - Jwt__Key=${JWT_KEY:-dev-only-super-secret-do-not-use-in-production-please-change-it}
+      - Jwt__Key=${JWT_KEY:-super-prod-very-super-prod-kill-me-please-jwt}
       - Jwt__Issuer=auth-service
       - Jwt__Audience=internal-api
       - Jwt__ExpiresMinutes=60
@@ -82,7 +82,7 @@ services:
       - redis_uri=redis:6379
       - redis_password=redis
       - kafka_uri=kafka:29092
-      - JWT_KEY=${JWT_KEY:-dev-only-super-secret-do-not-use-in-production-please-change-it}
+      - JWT_KEY=${JWT_KEY:-super-prod-very-super-prod-kill-me-please-jwt}
       - JWT_ISSUER=auth-service
       - JWT_AUDIENCE=internal-api
   mongodb:

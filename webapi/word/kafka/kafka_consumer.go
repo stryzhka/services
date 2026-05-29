@@ -33,17 +33,12 @@ func (c *Consumer) Consume(ctx context.Context, handler func(key, value []byte) 
 			log.Printf("read error: %v", err)
 			return err
 		}
-		log.Printf("got message: %s", string(msg.Value))
+		log.Printf("got message: offset=%d key=%s value=%s", msg.Offset, string(msg.Key), string(msg.Value))
+
 		timer := prometheus.NewTimer(c.metric.WithLabelValues("users-to-obj"))
 		err = handler(msg.Key, msg.Value)
 		timer.ObserveDuration()
 
-		if err != nil {
-			return err
-		}
-		if err := handler(msg.Key, msg.Value); err != nil {
-			return err
-		}
 	}
 }
 

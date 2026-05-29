@@ -207,7 +207,7 @@ func (a *App) Run(port string) error {
 	if len(authCfg.Secret) == 0 {
 		log.Fatal("JWT_KEY env is required")
 	}
-	authMiddleware := auth.Middleware(authCfg)
+	//authMiddleware := auth.Middleware(authCfg)
 
 	// public reads
 	public := router.PathPrefix("/api").Subrouter()
@@ -218,14 +218,14 @@ func (a *App) Run(port string) error {
 	public.HandleFunc("/categories/{id}/words", categoryHandler.GetAllWords).Methods("GET")
 
 	// protected mutations
-	protected := router.PathPrefix("/api").Subrouter()
-	protected.Use(authMiddleware)
-	protected.HandleFunc("/words/", wordHandler.Create).Methods("POST")
-	protected.HandleFunc("/words/{id}", wordHandler.Update).Methods("PUT")
-	protected.HandleFunc("/words/{id}", wordHandler.Delete).Methods("DELETE")
-	protected.HandleFunc("/categories/", categoryHandler.Create).Methods("POST")
-	protected.HandleFunc("/categories/{id}", categoryHandler.Update).Methods("PUT")
-	protected.HandleFunc("/categories/{id}", categoryHandler.Delete).Methods("DELETE")
+	//protected := router.PathPrefix("/api").Subrouter()
+	//public.Use(authMiddleware)
+	public.HandleFunc("/words/", wordHandler.Create).Methods("POST")
+	public.HandleFunc("/words/{id}", wordHandler.Update).Methods("PUT")
+	public.HandleFunc("/words/{id}", wordHandler.Delete).Methods("DELETE")
+	public.HandleFunc("/categories/", categoryHandler.Create).Methods("POST")
+	public.HandleFunc("/categories/{id}", categoryHandler.Update).Methods("PUT")
+	public.HandleFunc("/categories/{id}", categoryHandler.Delete).Methods("DELETE")
 
 	router.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
 	a.server = &http.Server{
@@ -247,7 +247,8 @@ func (a *App) Run(port string) error {
 		if err := a.kafkaConsumer.Consume(ctx, func(key, value []byte) error {
 			var msg wordpkg.WordConfirmedSuccessMessage
 			if err := json.Unmarshal(value, &msg); err != nil {
-				return err
+				log.Printf("unmarshal error: %v", err)
+				return nil
 			}
 
 			msgCtx, msgCancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -256,10 +257,11 @@ func (a *App) Run(port string) error {
 			err := a.wordService.ConfirmWord(msgCtx, msg.ObjectId, msg.ConfirmedAt.String())
 			if err != nil {
 				log.Printf("ConfirmWord error for objectId %s: %v", msg.ObjectId, err)
+				return nil
 			}
-			return err
+			return nil
 		}); err != nil {
-			log.Printf("consumer error: %s", err.Error())
+			log.Printf("consumer fatal error: %s", err.Error())
 			cancel()
 		}
 	}()

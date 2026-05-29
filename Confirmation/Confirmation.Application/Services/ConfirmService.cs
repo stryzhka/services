@@ -37,6 +37,7 @@ public class ConfirmService : IConfirmService
         }
 
         // _logger.LogInformation("doing things...");
+        _logger.LogInformation("User {UserId} confirmed {ObjectId}", @event.UserId, @event.ObjectId);
         await _publisher.PublishAsync("users-to-obj", new
         {
             object_id = @event.ObjectId,

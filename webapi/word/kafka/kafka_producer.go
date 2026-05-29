@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -37,14 +38,9 @@ func (p *Producer) Publish(ctx context.Context, topic, key string, payload any) 
 		Key:   []byte(key),
 		Value: data,
 	})
+	log.Println(fmt.Sprintf("publishing %s", key))
 	timer.ObserveDuration()
-	if err != nil {
-		return fmt.Errorf("write messages: %w", err)
-	}
-	return p.writer.WriteMessages(ctx, kafka.Message{
-		Key:   []byte(key),
-		Value: data,
-	})
+	return err
 }
 
 func (p *Producer) Close() error {
